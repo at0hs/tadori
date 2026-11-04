@@ -13,7 +13,22 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-まだコードはない。技術スタック（フレームワーク、ORM、認証ライブラリ）は設計フェーズで決める。スタック決定後、ビルド・lint・テスト（単体テストの個別実行を含む）のコマンドと、全体構成をこのファイルに追記すること。
+まだコードはない。技術スタックとシステム構成は決定済み（設計判断 D-10〜D-22）。
+
+- TypeScript（Node.js LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
+- `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
+- `web/`：Vite ＋ React、TanStack Router、TanStack Query、shadcn/ui（Base UI）＋ Tailwind CSS v4、TanStack Table、dnd-kit、CodeMirror 6、React Hook Form、react-markdown
+- `shared/`：Zod スキーマ（画面と API の約束事の正本）、`#{name}` の解析・置換、秘密変数のマスク処理
+- テストは Vitest（DB はモックせず、開発用とは別のテスト用 PostgreSQL）と Playwright。lint・フォーマットは Biome。ログは pino。CI は GitHub Actions。
+- compose はアプリ・PostgreSQL・バックアップ用のコンテナ。秘密の値と初期管理者は `.env` で渡す（リポジトリには `.env.example` だけ）。HTTPS はアプリでは扱わない。
+
+雛形を作ったら、ビルド・lint・テスト（単体テストの個別実行を含む）のコマンドと、全体構成をこのファイルに追記すること。
+
+## 画面の実装ルール
+
+- UI 部品は `web/` の `components/ui/`（shadcn からコピーした汎用の部品）にあるものを使う。ネット上のサンプルをそのまま貼らない。
+- shadcn/ui は **Base UI** ベース。部品の組み合わせは `render` プロパティで書き、Radix の `asChild` は使わない。部品ごとの引数も Radix と違うことがあるので、`components/ui/` の実装を確認してから使う。
+- Enter キーで何かを実行する処理（送信、タグの追加、候補の確定など）では、日本語の変換中（`event.nativeEvent.isComposing`）なら何もしない。
 
 ## 崩してはいけない不変条件
 
