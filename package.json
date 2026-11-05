@@ -1,0 +1,25 @@
+{
+  "name": "tadori",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @tadori/server --filter @tadori/web dev",
+    "build": "pnpm --filter @tadori/web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "db:up": "docker compose -f compose.dev.yaml up -d --wait",
+    "db:down": "docker compose -f compose.dev.yaml down"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.5",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,41 @@
+# 開発用とテスト用の PostgreSQL（D-22）。アプリはホストで動かす。
+# 本番用の構成（app・db・backup）は compose.yaml に置く。
+# パスワードはローカル専用のダミー。
+services:
+  db-dev:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: tadori
+      POSTGRES_PASSWORD: tadori-dev
+      POSTGRES_DB: tadori
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db-dev:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tadori -d tadori"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # テスト用。データは残さない（tmpfs）。
+  db-test:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: tadori
+      POSTGRES_PASSWORD: tadori-test
+      POSTGRES_DB: tadori_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    command:
+      ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tadori -d tadori_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-dev:

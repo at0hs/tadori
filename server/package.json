@@ -1,0 +1,15 @@
+{
+  "name": "@tadori/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../.env src/index.ts",
+    "start": "node src/index.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@tadori/shared": "workspace:*",
+    "hono": "^4.13.16"
+  }
+}
