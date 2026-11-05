@@ -8,8 +8,18 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.17",
     "@hono/node-server": "^2.1.6",
     "@tadori/shared": "workspace:*",
-    "hono": "^4.13.16"
+    "better-auth": "1.7.17",
+    "drizzle-orm": "1.0.0-rc.5",
+    "hono": "^4.13.16",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "1.0.0-rc.5"
   }
 }

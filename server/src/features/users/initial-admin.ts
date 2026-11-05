@@ -1,0 +1,48 @@
+import { count } from "drizzle-orm";
+import { createUserAccount } from "../../auth/users.ts";
+import type { Config } from "../../config.ts";
+import { db } from "../../db/client.ts";
+import { user } from "../../db/schema/auth.ts";
+import { userRoles } from "../../db/schema/users.ts";
+import { logger } from "../../lib/logger.ts";
+
+type InitialAdminConfig = Pick<
+  Config,
+  "INITIAL_ADMIN_USERNAME" | "INITIAL_ADMIN_NAME" | "INITIAL_ADMIN_EMAIL" | "INITIAL_ADMIN_PASSWORD"
+>;
+
+/**
+ * ユーザーが1人もいなければ、.env の値で初期管理者を作る（D-20、authorization.md 4.3）。
+ * 「パスワード変更が必要」にして、最初のログインで変更させる（D-14）。
+ */
+export async function ensureInitialAdmin(cfg: InitialAdminConfig): Promise<"created" | "skipped"> {
+  const [row] = await db.select({ n: count() }).from(user);
+  if ((row?.n ?? 0) > 0) return "skipped";
+
+  const username = cfg.INITIAL_ADMIN_USERNAME;
+  const name = cfg.INITIAL_ADMIN_NAME;
+  const email = cfg.INITIAL_ADMIN_EMAIL;
+  const password = cfg.INITIAL_ADMIN_PASSWORD;
+  if (!username || !name || !email || !password) {
+    throw new Error(
+      "ユーザーがいないため初期管理者を作るが、INITIAL_ADMIN_USERNAME・INITIAL_ADMIN_NAME・INITIAL_ADMIN_EMAIL・INITIAL_ADMIN_PASSWORD のどれかがない",
+    );
+  }
+
+  // Better Auth で作った後に、アプリの側でロールを登録する（conventions.md 4.4）。
+  const id = await createUserAccount({
+    username,
+    name,
+    email,
+    password,
+    isAdmin: true,
+    mustChangePassword: true,
+  });
+  await db.insert(userRoles).values({ userId: id, role: "admin", grantedBy: null });
+
+  logger.info(
+    { event: "user.created", target: { type: "user", id }, initialAdmin: true },
+    "初期管理者を作成した",
+  );
+  return "created";
+}

@@ -13,16 +13,60 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-まだコードはない。基本設計は完了している（`../tadori-docs/design/README.md`）。技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）まである。機能（F-01〜）はまだない。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
-- TypeScript（Node.js LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
+- TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
 - `web/`：Vite ＋ React、TanStack Router、TanStack Query、shadcn/ui（Base UI）＋ Tailwind CSS v4、TanStack Table、dnd-kit、CodeMirror 6、React Hook Form、react-markdown
 - `shared/`：Zod スキーマ（画面と API の約束事の正本）、`#{name}` の解析・置換、秘密変数のマスク処理
 - テストは Vitest（DB はモックせず、開発用とは別のテスト用 PostgreSQL）と Playwright。lint・フォーマットは Biome。ログは pino。CI は GitHub Actions。
 - compose はアプリ・PostgreSQL・バックアップ用のコンテナ。秘密の値と初期管理者は `.env` で渡す（リポジトリには `.env.example` だけ）。HTTPS はアプリでは扱わない。
 
-雛形を作ったら、ビルド・lint・テスト（単体テストの個別実行を含む）のコマンドと、全体構成をこのファイルに追記すること。
+## コマンド
+
+前提：Node.js 26、pnpm（`packageManager` の版に自動で合わせる）、Docker。初回は `.env.example` を `.env` に写す。
+
+| やること | コマンド |
+|---|---|
+| 依存を入れる | `pnpm install` |
+| 開発用・テスト用の DB を起動／停止 | `pnpm db:up` ／ `pnpm db:down` |
+| 開発サーバー（API :3000 と画面 :5173。画面の `/api` は API に転送） | `pnpm dev` |
+| 型チェック | `pnpm typecheck` |
+| lint とフォーマットの確認／自動修正 | `pnpm lint` ／ `pnpm format` |
+| テスト（全部） | `pnpm test`（テスト用 DB が要る。先に `pnpm db:up`） |
+| テスト（1ファイル） | `pnpm vitest run server/src/auth/routes.test.ts` |
+| テスト（名前で絞る） | `pnpm vitest run -t "F-01 AC"` |
+| テスト（パッケージで絞る） | `pnpm vitest run --project server` |
+| 画面のビルド | `pnpm build` |
+| マイグレーションの生成 | `pnpm --filter @tadori/server exec drizzle-kit generate --name <内容>` |
+
+CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルドを流す。
+
+## 構成
+
+ディレクトリの役割と依存の向きは `../tadori-docs/design/conventions.md` の 1〜2章に従う。今あるものは次のとおり。
+
+- `server/src/index.ts`：起動。マイグレーション → 初期管理者（ユーザーが0人のときだけ）→ 待ち受け。
+- `server/src/app.ts`：Hono のアプリ。ミドルウェアは**登録した順に効く**。CSRF → `/api/auth/*` → `requireSession` → `/api/me` → `requirePasswordChanged` の順で、機能のルートは一番下に足す。
+- `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成（`users.ts`）。
+- `server/src/middleware/`：CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）。
+- `server/src/db/`：テーブル定義（`schema/`）、接続（`client.ts`）、マイグレーション（`migrate.ts`）。生成した SQL は `server/drizzle/`。
+- `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、Hono の型（`hono.ts`）。
+- `server/test/`：テストの環境変数・DB の準備・補助関数。
+- `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`）。
+- `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
+
+## 間違えやすい点
+
+- **server と shared はビルドしない**。Node 26 が `.ts` を直接動かす（型を消すだけ）。そのため相対 import には `.ts` の拡張子を付け、`enum`・`namespace`・コンストラクタの引数でのプロパティ宣言など、型を消すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
+- **TypeScript 7** では `Response.json()` が `unknown` を返す。テストでは `test/helpers.ts` の `readJson` を使う。
+- **Drizzle は 1.0 の RC**。`drizzle()` には `schema` ではなく `relations` を渡す。アプリのテーブルは `snakeCase.table(...)` で定義する（列名が snake_case になる）。時刻の列は必ず `timestamp({ withTimezone: true })`。
+- **Better Auth のテーブル**（`db/schema/auth.ts`）は CLI の出力を書き換えたもの。Better Auth の版を上げて生成し直したら、時刻の列を `timestamptz` に直す（D-59。直し忘れは `schema.test.ts` が見つける）。
+- **Better Auth の入口を増やすときは `auth/routes.ts` の許可リストに書く**。書かない限り 404 になる。`auth.api.createUser` は `headers` なしで呼ぶと権限を確かめないので、呼ぶ前にアプリの認可を通す。
+- **適用済みのマイグレーションは書き換えない**。テーブル定義を直したら新しいマイグレーションを生成する。`server/drizzle/` は生成物なので Biome の対象外にしている。
+- **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。
+- **テストの DB**：server のテストはテスト用 DB を1つ共有し、ファイルを並べて流さない。Better Auth はアプリのトランザクションに参加できないので、認証を使うテストは `resetDb()` でテーブルを空にして分ける（ロールバックによる分離は、サービスのテストを書くときに用意する）。
+- **pnpm は出てから24時間たっていない版を入れない**（`minimumReleaseAge`）。新しすぎる版を指定すると、pnpm が `pnpm-workspace.yaml` に `minimumReleaseAgeExclude` を自動で書き足すことがある。これはコミットせず、24時間待つか1つ前の版にする。
 
 ## 画面の実装ルール
 
