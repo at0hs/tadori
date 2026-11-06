@@ -15,6 +15,7 @@ export {
   emailSchema,
   type PasswordResetRequest,
   passwordResetRequestSchema,
+  passwordSchema,
   temporaryPasswordSchema,
   userIdParamSchema,
   userNameSchema,

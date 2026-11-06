@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）と、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）まである。F-01 の画面と、F-02 以降はまだない。`GET /api/admin/users/{id}` の「実行中の実行」は、実行（F-05）を作るときに足す。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）まである。F-02 以降はまだない（ホーム・手順書・実行の画面は「まだありません」の表示）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`）。`GET /api/admin/users/{id}` の「実行中の実行」は、実行（F-05）を作るときに足す。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -37,11 +37,13 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 | テスト（1ファイル） | `pnpm vitest run server/src/auth/routes.test.ts` |
 | テスト（名前で絞る） | `pnpm vitest run -t "F-01 AC"` |
 | テスト（パッケージで絞る） | `pnpm vitest run --project server` |
+| E2E（全部） | `pnpm e2e`（テスト用 DB が要る。`pnpm test` と同時に流さない） |
+| E2E（1ファイル） | `pnpm --filter @tadori/web exec playwright test e2e/users.spec.ts` |
 | 画面のビルド | `pnpm build` |
 | マイグレーションの生成 | `pnpm --filter @tadori/server exec drizzle-kit generate --name <内容>` |
 | 管理者の復旧（D-51） | `pnpm --filter @tadori/server recover-admin <ユーザー名>`（仮のパスワードを標準エラー出力に出す） |
 
-CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルドを流す。
+CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルド・E2E を流す。
 
 ## 構成
 
@@ -56,6 +58,11 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、操作ログ（`operation-log.ts`）、本文とパスの検証（`validate.ts` の `jsonBody`・`pathParams`）、Hono の型とサービスに渡す `Operator`（`hono.ts`）。
 - `server/test/`：テストの環境変数・DB の準備・補助関数。
 - `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`）。
+- `web/src/routes/`：TanStack Router のルート（ファイルの並びが URL）。`_app.tsx` がログインの確認（未ログインは `/login?redirect=…`、パスワード変更が必要なら `/account/password`）と共通の枠。`routeTree.gen.ts` は Vite のプラグインが作る生成物（コミットする。Biome の対象外）。
+- `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名（`roles.ts`）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
+- `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
+- `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`）。
+- `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
 
 ## 間違えやすい点
@@ -70,10 +77,15 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **ルートの検証**は `lib/validate.ts` の `jsonBody(schema)`・`pathParams(schema)` を使う（JSON でなければ 415、合わなければ 400 と欄ごとの `errors`。パスが合わなければ 404）。hono/validator を通すので、Hono RPC で画面に入力の型が伝わる。
 - **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。操作ログは `captureOperationLogs()`、D-33 の食い違いは `adminColumnMismatches()` で確かめる。
 - **テストの DB**：server のテストはテスト用 DB を1つ共有し、ファイルを並べて流さない。Better Auth はアプリのトランザクションに参加できないので、認証を使うテストは `resetDb()` でテーブルを空にして分ける（ロールバックによる分離は、サービスのテストを書くときに用意する）。
+- **E2E の注意**：`test.use({ storageState })` は `browser.newContext()` にも引き継がれる。別の人として操作するときは `e2e/helpers.ts` の `freshPage()` を使う。入力欄は `getByLabel(…, { exact: true })` で探す（検索欄などと部分一致する）。ログインは IP ごとに 60 秒 20 回の制限があるので、管理者のログインは使い回す。
 - **pnpm は出てから24時間たっていない版を入れない**（`minimumReleaseAge`）。新しすぎる版を指定すると、pnpm が `pnpm-workspace.yaml` に `minimumReleaseAgeExclude` を自動で書き足すことがある。これはコミットせず、24時間待つか1つ前の版にする。
 
 ## 画面の実装ルール
 
+- **色は `web/src/index.css` の CSS 変数だけで指定する**（D-62）。`bg-white`・`text-emerald-600` などを部品に直接書かない。成功・警告は `success`・`warning`、ヘッダは `chrome`。テーマ色は `--brand-hue` の1つで、ライトとダークの両方の値を決めて確かめる。
+- **画面の移動はリンクにする**。見た目をボタンにするときは `<Link className={buttonVariants()}>` と書く（`<Button render={<Link />}>` は役割がボタンになる）。
+- **API は `lib/api.ts` の `api` で呼ぶ**（例：`api.admin.users.$get()`）。エラーは `ApiError` で届き、未ログイン・パスワード変更が必要の移動は `lib/query.ts` が行う。ログイン・ログアウト・自分のパスワードの変更だけは `authClient` を使う。
+- **`me` を変える操作の後は `invalidateQueries` で取り直す**。`removeQueries` では表示中のヘッダに伝わらない。
 - UI 部品は `web/` の `components/ui/`（shadcn からコピーした汎用の部品）にあるものを使う。ネット上のサンプルをそのまま貼らない。
 - shadcn/ui は **Base UI** ベース。部品の組み合わせは `render` プロパティで書き、Radix の `asChild` は使わない。部品ごとの引数も Radix と違うことがあるので、`components/ui/` の実装を確認してから使う。
 - Enter キーで何かを実行する処理（送信、タグの追加、候補の確定など）では、日本語の変換中（`event.nativeEvent.isComposing`）なら何もしない。

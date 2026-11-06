@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tadori</title>
+    <script>
+      // 読み込みの直後に白く光らないよう、React より前にテーマを付ける（D-62）。
+      // 規則は src/lib/theme.ts と同じ。変えるときは両方を直す。
+      try {
+        const pref = localStorage.getItem("tadori.theme");
+        const dark =
+          pref === "dark" ||
+          (pref !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
