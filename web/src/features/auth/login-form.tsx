@@ -35,9 +35,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
     const { error } = await authClient.signIn.username(values);
     if (error) {
       setFailure(
-        error.status === 429
-          ? "ログインの試行が多すぎます。しばらく待ってから試してください。"
-          : "ログインできませんでした",
+        error.status === 429 ? "ログインに制限がかかりました。" : "ログインできませんでした",
       );
       return;
     }
