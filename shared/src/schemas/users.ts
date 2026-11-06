@@ -21,11 +21,14 @@ export const emailSchema = z
   .email("メールアドレスの形式が正しくありません。")
   .max(254, "メールアドレスが長すぎます。");
 
-// 仮のパスワード。長さは Better Auth の既定（8〜128文字）に合わせる。
-export const temporaryPasswordSchema = z
+// パスワード。長さは Better Auth の既定（8〜128文字）に合わせる。自分で変えるとき（S-02）にも使う。
+export const passwordSchema = z
   .string()
   .min(8, "パスワードは8文字以上にしてください。")
   .max(128, "パスワードは128文字以内にしてください。");
+
+// 管理者が決める仮のパスワード（作成・再設定）。規則は passwordSchema と同じ。
+export const temporaryPasswordSchema = passwordSchema;
 
 /** POST /api/admin/users */
 export const createUserRequestSchema = z.object({
