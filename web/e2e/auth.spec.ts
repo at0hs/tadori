@@ -40,23 +40,30 @@ test.describe("ログインしている", () => {
   test("ヘッダにメニューと自分の名前・ロールを出す", async ({ page }) => {
     await page.goto("/");
     for (const name of ["ホーム", "手順書", "実行", "管理"]) {
-      await expect(page.getByRole("link", { name })).toBeVisible();
+      await expect(
+        page.getByRole("navigation", { name: "メニュー" }).getByRole("link", { name }),
+      ).toBeVisible();
     }
     await openUserMenu(page);
     await expect(page.getByRole("menu").getByText("管理 花子")).toBeVisible();
     await expect(page.getByRole("menu").getByText("管理者")).toBeVisible();
   });
 
-  // ユーザーの一覧（Task 4）ができたら fixme を外す
-  test.fixme("セッションが切れたら、ログインし直して元の画面に戻る", async ({ page, context }) => {
+  test("操作の途中でセッションが切れたら、ログインし直して元の画面に戻る", async ({
+    page,
+    context,
+  }) => {
     await page.goto("/admin/users");
-    await expect(page.getByRole("heading", { name: "ユーザー" })).toBeVisible();
+    await page.getByRole("link", { name: /管理 花子/ }).click();
+    await expect(page).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}$/);
+    const detail = new URL(page.url()).pathname;
+    // 画面の読み込みが終わってから切る（操作の途中で切れた場面にする）
+    await expect(page.getByRole("switch", { name: "閲覧者" })).toBeVisible();
     await context.clearCookies();
-    // 画面のデータを取り直させる（タブに戻ったときの再取得と同じ）
-    await page.getByRole("button", { name: /すべて/ }).click();
-    await expect(page).toHaveURL(/\/login\?redirect=%2Fadmin%2Fusers/);
+    await page.getByRole("switch", { name: "閲覧者" }).click();
+    await expect(page).toHaveURL(`/login?redirect=${encodeURIComponent(detail)}`);
     await login(page, "admin", ADMIN_PASSWORD);
-    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page).toHaveURL(detail);
   });
 
   test("テーマをダークにすると、再読み込みしてもダークのまま", async ({ page }) => {

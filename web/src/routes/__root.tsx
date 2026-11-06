@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { FileQuestion } from "lucide-react";
 import { EmptyState } from "@/components/empty-state.tsx";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Outlet,
@@ -14,9 +14,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         title="ページが見つかりません"
         description="URL が正しいか確かめてください"
         action={
-          <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
+          <Link to="/" className={buttonVariants({ variant: "outline" })}>
             ホームへ
-          </Button>
+          </Link>
         }
       />
     </div>

@@ -10,7 +10,9 @@ setup(
     await expect(page).toHaveURL("/account/password");
     await expect(page.getByText("パスワードの変更が必要です")).toBeVisible();
     // 変更が済むまではメニューを出さず、ほかの画面にも行けない
-    await expect(page.getByRole("link", { name: "手順書" })).toHaveCount(0);
+    await expect(
+      page.getByRole("navigation", { name: "メニュー" }).getByRole("link", { name: "手順書" }),
+    ).toHaveCount(0);
     await page.goto("/procedures");
     await expect(page).toHaveURL("/account/password");
 
@@ -24,7 +26,9 @@ setup(
 
     await changePassword(page, INITIAL_PASSWORD, ADMIN_PASSWORD);
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("link", { name: "管理" })).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "メニュー" }).getByRole("link", { name: "管理" }),
+    ).toBeVisible();
 
     await page.context().storageState({ path: ADMIN_STATE });
   },

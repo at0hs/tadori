@@ -16,6 +16,9 @@ import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAccountPasswordRouteImport } from './routes/_app/account/password'
 import { Route as AppExecutionsIndexRouteImport } from './routes/_app/executions/index'
 import { Route as AppProceduresIndexRouteImport } from './routes/_app/procedures/index'
+import { Route as AppAdminUsersIndexRouteImport } from './routes/_app/admin/users/index'
+import { Route as AppAdminUsersUserIdRouteImport } from './routes/_app/admin/users/$userId'
+import { Route as AppAdminUsersNewRouteImport } from './routes/_app/admin/users/new'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -51,32 +54,56 @@ const AppProceduresIndexRoute = AppProceduresIndexRouteImport.update({
   path: '/procedures/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminUsersIndexRoute = AppAdminUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminUsersUserIdRoute = AppAdminUsersUserIdRouteImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminUsersNewRoute = AppAdminUsersNewRouteImport.update({
+  id: '/users/new',
+  path: '/users/new',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AppAdminRouteWithChildren
   '/account/password': typeof AppAccountPasswordRoute
   '/executions/': typeof AppExecutionsIndexRoute
   '/procedures/': typeof AppProceduresIndexRoute
+  '/admin/users/$userId': typeof AppAdminUsersUserIdRoute
+  '/admin/users/new': typeof AppAdminUsersNewRoute
+  '/admin/users/': typeof AppAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AppAdminRouteWithChildren
   '/': typeof AppIndexRoute
   '/account/password': typeof AppAccountPasswordRoute
   '/executions': typeof AppExecutionsIndexRoute
   '/procedures': typeof AppProceduresIndexRoute
+  '/admin/users/$userId': typeof AppAdminUsersUserIdRoute
+  '/admin/users/new': typeof AppAdminUsersNewRoute
+  '/admin/users': typeof AppAdminUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
-  '/_app/admin': typeof AppAdminRoute
+  '/_app/admin': typeof AppAdminRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/account/password': typeof AppAccountPasswordRoute
   '/_app/executions/': typeof AppExecutionsIndexRoute
   '/_app/procedures/': typeof AppProceduresIndexRoute
+  '/_app/admin/users/$userId': typeof AppAdminUsersUserIdRoute
+  '/_app/admin/users/new': typeof AppAdminUsersNewRoute
+  '/_app/admin/users/': typeof AppAdminUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,6 +114,9 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/executions/'
     | '/procedures/'
+    | '/admin/users/$userId'
+    | '/admin/users/new'
+    | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -95,6 +125,9 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/executions'
     | '/procedures'
+    | '/admin/users/$userId'
+    | '/admin/users/new'
+    | '/admin/users'
   id:
     | '__root__'
     | '/_app'
@@ -104,6 +137,9 @@ export interface FileRouteTypes {
     | '/_app/account/password'
     | '/_app/executions/'
     | '/_app/procedures/'
+    | '/_app/admin/users/$userId'
+    | '/_app/admin/users/new'
+    | '/_app/admin/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,11 +198,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProceduresIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/users/': {
+      id: '/_app/admin/users/'
+      path: '/users'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AppAdminUsersIndexRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/users/$userId': {
+      id: '/_app/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AppAdminUsersUserIdRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/users/new': {
+      id: '/_app/admin/users/new'
+      path: '/users/new'
+      fullPath: '/admin/users/new'
+      preLoaderRoute: typeof AppAdminUsersNewRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
+interface AppAdminRouteChildren {
+  AppAdminUsersUserIdRoute: typeof AppAdminUsersUserIdRoute
+  AppAdminUsersNewRoute: typeof AppAdminUsersNewRoute
+  AppAdminUsersIndexRoute: typeof AppAdminUsersIndexRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminUsersUserIdRoute: AppAdminUsersUserIdRoute,
+  AppAdminUsersNewRoute: AppAdminUsersNewRoute,
+  AppAdminUsersIndexRoute: AppAdminUsersIndexRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppAccountPasswordRoute: typeof AppAccountPasswordRoute
   AppExecutionsIndexRoute: typeof AppExecutionsIndexRoute
@@ -174,7 +247,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppAccountPasswordRoute: AppAccountPasswordRoute,
   AppExecutionsIndexRoute: AppExecutionsIndexRoute,

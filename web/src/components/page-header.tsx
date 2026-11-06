@@ -18,25 +18,7 @@ export function PageHeader({
 }) {
   return (
     <div>
-      {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav
-          aria-label="パンくず"
-          className="mb-1 flex items-center gap-1 text-sm text-muted-foreground"
-        >
-          {breadcrumbs.map((b, i) => (
-            <span key={b.label} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="size-3.5" aria-hidden />}
-              {b.to ? (
-                <Link to={b.to} className="transition-colors hover:text-foreground">
-                  {b.label}
-                </Link>
-              ) : (
-                <span>{b.label}</span>
-              )}
-            </span>
-          ))}
-        </nav>
-      )}
+      {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl font-bold">{title}</h1>
@@ -45,5 +27,27 @@ export function PageHeader({
         {action}
       </div>
     </div>
+  );
+}
+
+export function Breadcrumbs({ items }: { items: Breadcrumb[] }) {
+  return (
+    <nav
+      aria-label="パンくず"
+      className="mb-1 flex items-center gap-1 text-sm text-muted-foreground"
+    >
+      {items.map((b, i) => (
+        <span key={b.label} className="flex items-center gap-1">
+          {i > 0 && <ChevronRight className="size-3.5" aria-hidden />}
+          {b.to ? (
+            <Link to={b.to} className="transition-colors hover:text-foreground">
+              {b.label}
+            </Link>
+          ) : (
+            <span>{b.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
   );
 }
