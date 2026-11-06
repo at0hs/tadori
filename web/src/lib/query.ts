@@ -13,10 +13,14 @@ export function globalErrorAction(e: unknown): GlobalErrorAction | null {
 
 export function createQueryClient(onGlobalError: (action: GlobalErrorAction) => void): QueryClient {
   const onError = (e: unknown) => {
+    // 権限なし・パスワード変更が必要は、自分の状態（ロールなど）が変わった合図なので me を取り直す
+    if (isApiError(e, "FORBIDDEN") || isApiError(e, "PASSWORD_CHANGE_REQUIRED")) {
+      void client.invalidateQueries({ queryKey: ["me"] });
+    }
     const action = globalErrorAction(e);
     if (action) onGlobalError(action);
   };
-  return new QueryClient({
+  const client = new QueryClient({
     queryCache: new QueryCache({ onError }),
     mutationCache: new MutationCache({ onError }),
     defaultOptions: {
@@ -27,4 +31,5 @@ export function createQueryClient(onGlobalError: (action: GlobalErrorAction) => 
       },
     },
   });
+  return client;
 }

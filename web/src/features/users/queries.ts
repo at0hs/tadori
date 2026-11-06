@@ -69,6 +69,6 @@ export function useResetPassword(userId: string) {
         json: { password },
       });
     },
-    onSuccess: () => invalidate({ self: false }),
+    onSettled: () => invalidate({ self: false }),
   });
 }

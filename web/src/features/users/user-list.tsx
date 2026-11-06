@@ -2,7 +2,7 @@ import type { AdminUser } from "@tadori/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Search, UserSearch, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { ErrorBanner } from "@/components/error-banner.tsx";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,8 @@ export function UserList({
   const counts = users ? countByStatus(users) : undefined;
   const shown = users ? filterUsers(users, filter) : [];
   const [q, setQ] = useState(filter.q);
+  // URL が外から変わったとき（メニューから開き直したときなど）は、欄を合わせる
+  useEffect(() => setQ(filter.q), [filter.q]);
 
   return (
     <>

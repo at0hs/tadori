@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MeResponse } from "@tadori/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -40,7 +41,13 @@ export function LoginForm({ redirect }: { redirect?: string }) {
       );
       return;
     }
-    const me = await queryClient.fetchQuery({ ...meQueryOptions, staleTime: 0 });
+    let me: MeResponse;
+    try {
+      me = await queryClient.fetchQuery({ ...meQueryOptions, staleTime: 0 });
+    } catch {
+      setFailure("ログインしましたが、画面を開けませんでした。時間をおいて試してください。");
+      return;
+    }
     await navigate({ to: me.mustChangePassword ? "/account/password" : safeRedirect(redirect) });
   };
 

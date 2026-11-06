@@ -80,6 +80,18 @@ test("該当なしは0件の表示を出し、解除できる", async ({ page })
   await expect(page).not.toHaveURL(/q=/);
 });
 
+test("URL の絞り込みが外から変わったら、検索欄も合わせる", async ({ page }) => {
+  await page.goto("/admin/users?q=sato");
+  const search = page.getByRole("textbox", { name: "名前・ユーザー名で絞り込み" });
+  await expect(search).toHaveValue("sato");
+  await page
+    .getByRole("navigation", { name: "メニュー" })
+    .getByRole("link", { name: "管理" })
+    .click();
+  await expect(page).toHaveURL("/admin/users");
+  await expect(search).toHaveValue("");
+});
+
 test("ロールのスイッチで付与と剥奪がすぐ反映される", async ({ page }) => {
   await page.goto("/admin/users");
   await page.getByRole("link", { name: /佐藤 次郎/ }).click();

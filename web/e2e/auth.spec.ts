@@ -10,6 +10,15 @@ test.describe("ログインしていない", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("ログインの直後に自分の情報を取れなければ、そのことを伝える", async ({ page }) => {
+    await page.goto("/login");
+    await page.route("**/api/me", (route) => route.fulfill({ status: 500, body: "down" }));
+    await login(page, "admin", ADMIN_PASSWORD);
+    await expect(
+      page.getByText("ログインしましたが、画面を開けませんでした。時間をおいて試してください。"),
+    ).toBeVisible();
+  });
+
   test("ログイン前に開こうとした画面に、ログイン後に戻る", async ({ page }) => {
     await page.goto("/executions?status=running");
     await expect(page).toHaveURL(/\/login\?redirect=/);
@@ -76,6 +85,15 @@ test.describe("ログインしている", () => {
     await openUserMenu(page);
     await page.getByRole("button", { name: "ライト" }).click();
     await expect(page.locator("html")).not.toHaveClass(/dark/);
+  });
+
+  test("API が止まっていたら、日本語のエラー画面を出し、再読み込みで戻れる", async ({ page }) => {
+    await page.route("**/api/me", (route) => route.fulfill({ status: 500, body: "down" }));
+    await page.goto("/");
+    await expect(page.getByText("画面を読み込めませんでした")).toBeVisible();
+    await page.unroute("**/api/me");
+    await page.getByRole("button", { name: "再読み込み" }).click();
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible();
   });
 
   test("存在しない URL は「見つかりません」", async ({ page }) => {
