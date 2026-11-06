@@ -1,4 +1,4 @@
-import { roleSchema } from "@tadori/shared";
+import { ROLES, roleSchema } from "@tadori/shared";
 import { eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { getSession } from "../auth/session.ts";
@@ -22,7 +22,10 @@ export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
     id: session.user.id,
     name: session.user.name,
     username: session.user.username ?? "",
-    roles: rows.map((r) => roleSchema.parse(r.role)),
+    // ROLES の順に並べる（管理者の API と揃える）
+    roles: rows
+      .map((r) => roleSchema.parse(r.role))
+      .sort((a, b) => ROLES.indexOf(a) - ROLES.indexOf(b)),
     mustChangePassword: session.user.mustChangePassword === true,
   });
 

@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）まである。機能（F-01〜）はまだない。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）と、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）まである。F-01 の画面と、F-02 以降はまだない。`GET /api/admin/users/{id}` の「実行中の実行」は、実行（F-05）を作るときに足す。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -39,6 +39,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 | テスト（パッケージで絞る） | `pnpm vitest run --project server` |
 | 画面のビルド | `pnpm build` |
 | マイグレーションの生成 | `pnpm --filter @tadori/server exec drizzle-kit generate --name <内容>` |
+| 管理者の復旧（D-51） | `pnpm --filter @tadori/server recover-admin <ユーザー名>`（仮のパスワードを標準エラー出力に出す） |
 
 CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルドを流す。
 
@@ -47,11 +48,12 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 ディレクトリの役割と依存の向きは `../tadori-docs/design/conventions.md` の 1〜2章に従う。今あるものは次のとおり。
 
 - `server/src/index.ts`：起動。マイグレーション → 初期管理者（ユーザーが0人のときだけ）→ 待ち受け。
-- `server/src/app.ts`：Hono のアプリ。ミドルウェアは**登録した順に効く**。CSRF → `/api/auth/*` → `requireSession` → `/api/me` → `requirePasswordChanged` の順で、機能のルートは一番下に足す。
-- `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成（`users.ts`）。
-- `server/src/middleware/`：CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）。
+- `server/src/app.ts`：Hono のアプリ。ミドルウェアは**登録した順に効く**。リクエスト ID と IP → CSRF → `/api/auth/*` → `requireSession` → `/api/me` → `requirePasswordChanged` → 機能のルートの順で、機能のルートは一番下に足す。
+- `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成・無効化・パスワードの設定・復旧（`users.ts`）。ログインの操作ログは `auth.ts` の after フックで出す。
+- `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requireRole`）。
+- `server/src/features/users/`：管理者の API（`routes.ts`・`service.ts`）、初期管理者、復旧（`recover.ts`。入口は `server/src/cli/recover-admin.ts`）。
 - `server/src/db/`：テーブル定義（`schema/`）、接続（`client.ts`）、マイグレーション（`migrate.ts`）。生成した SQL は `server/drizzle/`。
-- `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、Hono の型（`hono.ts`）。
+- `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、操作ログ（`operation-log.ts`）、本文とパスの検証（`validate.ts` の `jsonBody`・`pathParams`）、Hono の型とサービスに渡す `Operator`（`hono.ts`）。
 - `server/test/`：テストの環境変数・DB の準備・補助関数。
 - `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
@@ -64,7 +66,9 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **Better Auth のテーブル**（`db/schema/auth.ts`）は CLI の出力を書き換えたもの。Better Auth の版を上げて生成し直したら、時刻の列を `timestamptz` に直す（D-59。直し忘れは `schema.test.ts` が見つける）。
 - **Better Auth の入口を増やすときは `auth/routes.ts` の許可リストに書く**。書かない限り 404 になる。`auth.api.createUser` は `headers` なしで呼ぶと権限を確かめないので、呼ぶ前にアプリの認可を通す。
 - **適用済みのマイグレーションは書き換えない**。テーブル定義を直したら新しいマイグレーションを生成する。`server/drizzle/` は生成物なので Biome の対象外にしている。
-- **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。
+- **サービスは `Context` を受け取らない**。ルートで `operatorOf(c)` を呼び、操作する人・リクエスト ID と IP・Better Auth に渡すヘッダをまとめた `Operator` を渡す。操作ログは `logOperation(op.meta, …)` で、コミットした後に出す。
+- **ルートの検証**は `lib/validate.ts` の `jsonBody(schema)`・`pathParams(schema)` を使う（JSON でなければ 415、合わなければ 400 と欄ごとの `errors`。パスが合わなければ 404）。hono/validator を通すので、Hono RPC で画面に入力の型が伝わる。
+- **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。操作ログは `captureOperationLogs()`、D-33 の食い違いは `adminColumnMismatches()` で確かめる。
 - **テストの DB**：server のテストはテスト用 DB を1つ共有し、ファイルを並べて流さない。Better Auth はアプリのトランザクションに参加できないので、認証を使うテストは `resetDb()` でテーブルを空にして分ける（ロールバックによる分離は、サービスのテストを書くときに用意する）。
 - **pnpm は出てから24時間たっていない版を入れない**（`minimumReleaseAge`）。新しすぎる版を指定すると、pnpm が `pnpm-workspace.yaml` に `minimumReleaseAgeExclude` を自動で書き足すことがある。これはコミットせず、24時間待つか1つ前の版にする。
 

@@ -1,9 +1,11 @@
 import type { Role } from "@tadori/shared";
 import { sql } from "drizzle-orm";
+import { vi } from "vitest";
 import { app } from "../src/app.ts";
 import { createUserAccount } from "../src/auth/users.ts";
 import { db } from "../src/db/client.ts";
 import { userRoles } from "../src/db/schema/users.ts";
+import { logger } from "../src/lib/logger.ts";
 import { TEST_ENV } from "./env.ts";
 
 export const ORIGIN = new URL(TEST_ENV.APP_URL).origin;
@@ -78,6 +80,31 @@ export function cookieFrom(res: Response) {
     .getSetCookie()
     .map((c) => c.split(";")[0])
     .join("; ");
+}
+
+/**
+ * 操作ログ（F-10）を集める。返した配列に、logger.info に渡した項目（event を持つもの）が入る。
+ * vi.restoreAllMocks() か afterEach で元に戻すこと。
+ */
+export function captureOperationLogs() {
+  const logs: Record<string, unknown>[] = [];
+  vi.spyOn(logger, "info").mockImplementation(((obj: unknown, ...rest: unknown[]) => {
+    if (typeof obj === "object" && obj !== null && "event" in obj) {
+      logs.push({ ...(obj as Record<string, unknown>), msg: rest[0] });
+    }
+  }) as typeof logger.info);
+  return logs;
+}
+
+/** user.role（admin プラグインの列）が、user_roles の管理者ロールの有無と食い違うユーザー（D-33）。 */
+export async function adminColumnMismatches() {
+  const result = await db.execute<{ id: string }>(sql`
+    select u.id from "user" u
+    where (u.role = 'admin') is distinct from exists (
+      select 1 from user_roles r where r.user_id = u.id and r.role = 'admin'
+    )
+  `);
+  return result.rows;
 }
 
 /** 応答の本文を読む。テストでは中身を自由に見たいので any にする。 */

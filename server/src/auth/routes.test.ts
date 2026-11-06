@@ -1,8 +1,19 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { createUser, login, PASSWORD, readJson, request, resetDb } from "../../test/helpers.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  captureOperationLogs,
+  createUser,
+  login,
+  PASSWORD,
+  readJson,
+  request,
+  resetDb,
+} from "../../test/helpers.ts";
 import { auth, SIGN_IN_RATE_LIMIT } from "./auth.ts";
 
 beforeEach(resetDb);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("Better Auth の入口の許可リスト（D-33）", () => {
   it.each([
@@ -90,5 +101,61 @@ describe("ログインの回数制限と IP（D-52、D-60）", () => {
       json: { username: "user01", password: PASSWORD },
     });
     expect(other.status).toBe(200);
+  });
+});
+
+describe("F-10 AC: ログインの成功・失敗がログから追える", () => {
+  it("成功：操作した人と接続元の IP を出す", async () => {
+    const id = await createUser({ username: "user01" });
+    const logs = captureOperationLogs();
+    await request("/api/auth/sign-in/username", {
+      ip: "198.51.100.20",
+      json: { username: "user01", password: PASSWORD },
+    });
+    expect(logs).toEqual([
+      expect.objectContaining({
+        event: "auth.login_succeeded",
+        actorId: id,
+        ip: "198.51.100.20",
+        requestId: expect.any(String),
+      }),
+    ]);
+  });
+
+  it("失敗：入力されたユーザー名が存在すればその ID を出し、入力そのものは出さない", async () => {
+    const id = await createUser({ username: "user01" });
+    const logs = captureOperationLogs();
+    await request("/api/auth/sign-in/username", {
+      ip: "198.51.100.21",
+      json: { username: "USER01", password: "wrong-password-xx" },
+    });
+    expect(logs).toEqual([
+      expect.objectContaining({ event: "auth.login_failed", actorId: id, ip: "198.51.100.21" }),
+    ]);
+    expect(JSON.stringify(logs)).not.toContain("wrong-password-xx");
+    expect(JSON.stringify(logs)).not.toContain("USER01");
+  });
+
+  it("失敗：存在しないユーザー名なら actorId を出さない（ユーザー名の欄に入れたパスワードを残さない）", async () => {
+    const logs = captureOperationLogs();
+    await request("/api/auth/sign-in/username", {
+      json: { username: "Secret-typed-here", password: "wrong-password-xx" },
+    });
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ event: "auth.login_failed" });
+    expect(logs[0]).not.toHaveProperty("actorId");
+    expect(JSON.stringify(logs)).not.toContain("Secret-typed-here");
+  });
+
+  it("無効化されたユーザーのログインは失敗として出す", async () => {
+    await createUser({ username: "admin01", roles: ["admin"] });
+    const id = await createUser({ username: "user01" });
+    const adminCookie = await login("admin01");
+    await request(`/api/admin/users/${id}/ban`, { cookie: adminCookie, json: {} });
+    const logs = captureOperationLogs();
+    await request("/api/auth/sign-in/username", {
+      json: { username: "user01", password: PASSWORD },
+    });
+    expect(logs).toEqual([expect.objectContaining({ event: "auth.login_failed", actorId: id })]);
   });
 });
