@@ -24,7 +24,9 @@ export type OperationEvent =
   | "procedure.archived"
   | "execution.started"
   | "execution.finished"
-  | "execution.cancelled";
+  | "execution.cancelled"
+  | "execution.approved"
+  | "execution.rejected";
 
 export type OperationTarget = { type: "user" | "procedure" | "execution"; id: string };
 

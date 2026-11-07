@@ -1,3 +1,4 @@
+import { SECRET_MASK } from "@tadori/shared";
 import { type RenderContext, renderPieces } from "./render.ts";
 
 export const VALUE_CLASS = "rounded bg-accent/70 px-0.5 text-accent-foreground";
@@ -24,6 +25,23 @@ export function ExecText({ text, ctx }: { text: string; ctx: RenderContext }) {
           </span>
         );
       })}
+    </>
+  );
+}
+
+/** 実行者が入力したテキスト（コメント・エビデンス・再依頼のコメント）。マスクされた箇所を警告色の地にする（ui.md 8.5）。 */
+export function MaskedText({ text }: { text: string }) {
+  const parts = text.split(SECRET_MASK);
+  return (
+    <>
+      {parts.map((p, i) => (
+        // 分けた位置は本文が同じなら変わらない
+        // biome-ignore lint/suspicious/noArrayIndexKey: 本文を分けた断片で、並びは変わらない
+        <span key={i}>
+          {i > 0 && <span className={SECRET_CLASS}>{SECRET_MASK}</span>}
+          {p}
+        </span>
+      ))}
     </>
   );
 }

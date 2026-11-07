@@ -26,6 +26,7 @@ import { SectionTitle } from "@/features/procedures/editor/sections.tsx";
 import { isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
+import { MaskedText } from "./exec-text.tsx";
 import { STEP_STATUS_META } from "./execution-status.tsx";
 import { useUpdateVariables } from "./queries.ts";
 
@@ -348,7 +349,7 @@ const APPROVAL_EVENT_META = {
 export function ApprovalsCard({ approvals }: { approvals: ApprovalEvent[] }) {
   if (approvals.length === 0) return null;
   return (
-    <section className="rounded-xl border bg-card p-4">
+    <section className="rounded-xl border bg-card p-4" aria-label="承認の履歴">
       <SectionTitle icon={Stamp}>承認の履歴</SectionTitle>
       <ol className="mt-3 grid gap-3">
         {approvals.map((a, i) => {
@@ -382,7 +383,7 @@ export function ApprovalsCard({ approvals }: { approvals: ApprovalEvent[] }) {
                 </div>
                 {a.comment && (
                   <p className="mt-1 rounded-md bg-muted px-2.5 py-1.5 text-sm whitespace-pre-wrap">
-                    {a.comment}
+                    <MaskedText text={a.comment} />
                   </p>
                 )}
               </div>

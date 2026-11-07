@@ -33,7 +33,7 @@ import { MarkdownText } from "@/features/procedures/procedure-document.tsx";
 import { copyText } from "@/lib/clipboard.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
-import { ExecText, SECRET_CLASS } from "./exec-text.tsx";
+import { ExecText, MaskedText } from "./exec-text.tsx";
 import { STEP_STATUS_META, StepStatusText } from "./execution-status.tsx";
 import { useAddComment, useAddEvidence } from "./queries.ts";
 import { maskInput, type RenderContext, renderPieces, textForCopy } from "./render.ts";
@@ -336,22 +336,6 @@ function CommandBox({ command, env }: { command: string; env: StepCardEnv }) {
 }
 
 /** エビデンスの本文。マスクされた箇所を警告色の地にする */
-function MaskedText({ text }: { text: string }) {
-  const parts = text.split(SECRET_MASK);
-  return (
-    <>
-      {parts.map((p, i) => (
-        // 分けた位置は本文が同じなら変わらない
-        // biome-ignore lint/suspicious/noArrayIndexKey: 本文を分けた断片で、並びは変わらない
-        <span key={i}>
-          {i > 0 && <span className={SECRET_CLASS}>{SECRET_MASK}</span>}
-          {p}
-        </span>
-      ))}
-    </>
-  );
-}
-
 type Kind = "comment" | "evidence";
 
 function Records({ step, label, env }: { step: ExecutionStep; label: string; env: StepCardEnv }) {

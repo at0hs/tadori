@@ -20,6 +20,7 @@ import {
   KeyRound,
   ListOrdered,
   ListX,
+  Send,
   Undo2,
   UserX,
   X,
@@ -42,6 +43,7 @@ import { SectionTitle } from "@/features/procedures/editor/sections.tsx";
 import { isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
+import { approvalAction } from "./approval-action.ts";
 import { ExecutionDialogs } from "./execution-dialogs.tsx";
 import { ApprovalsCard, ProgressCard, VariablesCard } from "./execution-rail.tsx";
 import {
@@ -55,7 +57,7 @@ import type { RenderContext } from "./render.ts";
 import { useSecrets } from "./secret-store.ts";
 import { StepCard, type StepCardEnv, stepLabel } from "./step-card.tsx";
 
-// S-12 実行（ui.md 8.4〜8.8、案2）。承認（F-08）と Excel（F-09）の操作は、それらを作るときに足す。
+// S-12 実行（ui.md 8.4〜8.8、案2）。Excel（F-09）の操作は、それを作るときに足す。
 
 /** 本人：その実行を開始し、今も実行者ロールを持つ人（D-35） */
 export function canOperate(detail: ExecutionDetailResponse, me: MeResponse): boolean {
@@ -75,6 +77,9 @@ export type DialogState =
   | { kind: "skip"; step: ExecutionStep; label: string; title: string }
   | { kind: "finish" }
   | { kind: "cancel"; mode: "executor" | "admin" }
+  | { kind: "approve" }
+  | { kind: "reject" }
+  | { kind: "resubmit" }
   | null;
 
 export function ExecutionPage({ executionId }: { executionId: string }) {
@@ -119,6 +124,7 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
   const owner = canOperate(detail, me);
   const operate = owner && detail.status === "running";
   const append = canAppend(detail, me);
+  const action = approvalAction(detail, me);
   const secretNames = detail.content.variables.filter((v) => v.secret).map((v) => v.name);
   const hasSecretVariables = secretNames.length > 0;
   const needSecrets = hasSecretVariables && secrets === undefined;
@@ -212,6 +218,24 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        )}
+        {action === "review" && (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" onClick={() => setDialog({ kind: "reject" })}>
+              <Undo2 aria-hidden />
+              差し戻す
+            </Button>
+            <Button onClick={() => setDialog({ kind: "approve" })}>
+              <BadgeCheck aria-hidden />
+              承認する
+            </Button>
+          </div>
+        )}
+        {action === "resubmit" && (
+          <Button className="shrink-0" onClick={() => setDialog({ kind: "resubmit" })}>
+            <Send aria-hidden />
+            再依頼する
+          </Button>
         )}
       </div>
 
