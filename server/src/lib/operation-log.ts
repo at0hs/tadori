@@ -26,7 +26,8 @@ export type OperationEvent =
   | "execution.finished"
   | "execution.cancelled"
   | "execution.approved"
-  | "execution.rejected";
+  | "execution.rejected"
+  | "execution.exported";
 
 export type OperationTarget = { type: "user" | "procedure" | "execution"; id: string };
 

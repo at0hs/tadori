@@ -2,3 +2,7 @@ packages:
   - server
   - web
   - shared
+
+# ExcelJS 4.4.0 の依存の uuid 8 に脆弱性の知らせ（GHSA-w5hq-g745-h8pq）があるため、直った版に上げる（D-63）。
+overrides:
+  exceljs>uuid: 11.1.1

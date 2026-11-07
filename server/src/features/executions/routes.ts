@@ -17,6 +17,8 @@ import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
 import { requireRole } from "../../middleware/role.ts";
 import { cancelExecution, finishExecution } from "./end-service.ts";
+import { contentDisposition } from "./export-format.ts";
+import { exportExecution } from "./export-service.ts";
 import { getExecution, listExecutions } from "./read-service.ts";
 import { addComment, addEvidence, changeStepStatus, updateVariables } from "./record-service.ts";
 import { startExecution } from "./start-service.ts";
@@ -34,6 +36,15 @@ export const executionRoutes = new Hono<AppEnv>()
       c.req.valid("param").id,
     );
     return c.json(body);
+  })
+  // Excel 出力（F-09）。全員ができる（authorization.md）。
+  .get("/:id/export", pathParams(executionIdParamSchema), async (c) => {
+    const { body, names } = await exportExecution(operatorOf(c), c.req.valid("param").id);
+    return c.body(body, 200, {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": contentDisposition(names),
+      "Cache-Control": "no-store",
+    });
   })
   .post("/", requireRole("executor"), jsonBody(startExecutionRequestSchema), async (c) => {
     const body: StartExecutionResponse = await startExecution(operatorOf(c), c.req.valid("json"));
