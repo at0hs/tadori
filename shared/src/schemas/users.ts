@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { runningExecutionSchema } from "./executions.ts";
 import { roleSchema } from "./roles.ts";
 
 // ユーザー・ロールの管理（F-01、api.md 4.6）。管理者の API（/api/admin/users）の約束事。
@@ -72,7 +73,10 @@ export type AdminUserListResponse = z.infer<typeof adminUserListResponseSchema>;
 
 /**
  * GET /api/admin/users/{id}
- * 「そのユーザーが実行者で実行中の実行」（S-15）は、実行（F-05）を作るときに足す。
+ * runningExecutions は、そのユーザーが実行者で実行中の実行（S-15、D-36）。無効化・ロールの剥奪の前の案内に使う。
  */
-export const adminUserDetailResponseSchema = z.object({ user: adminUserSchema });
+export const adminUserDetailResponseSchema = z.object({
+  user: adminUserSchema,
+  runningExecutions: z.array(runningExecutionSchema),
+});
 export type AdminUserDetailResponse = z.infer<typeof adminUserDetailResponseSchema>;

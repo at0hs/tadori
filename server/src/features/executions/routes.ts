@@ -2,6 +2,7 @@ import {
   cancelRequestSchema,
   commentRequestSchema,
   type ExecutionDetailResponse,
+  type ExecutionListResponse,
   evidenceRequestSchema,
   executionIdParamSchema,
   type FinishExecutionResponse,
@@ -16,13 +17,17 @@ import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
 import { requireRole } from "../../middleware/role.ts";
 import { cancelExecution, finishExecution } from "./end-service.ts";
-import { getExecution } from "./read-service.ts";
+import { getExecution, listExecutions } from "./read-service.ts";
 import { addComment, addEvidence, changeStepStatus, updateVariables } from "./record-service.ts";
 import { startExecution } from "./start-service.ts";
 
 // 実行の API（api.md 4.4、authorization.md 3.3）。
 // 閲覧は全員。開始と記録は実行者ロール、本人かどうかはサービスで確かめる（D-35）。
 export const executionRoutes = new Hono<AppEnv>()
+  .get("/", async (c) => {
+    const body: ExecutionListResponse = { executions: await listExecutions() };
+    return c.json(body);
+  })
   .get("/:id", pathParams(executionIdParamSchema), async (c) => {
     const body: ExecutionDetailResponse = await getExecution(
       c.get("actor"),

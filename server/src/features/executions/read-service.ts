@@ -1,5 +1,10 @@
-import type { ExecutionDetailResponse, StepRecord } from "@tadori/shared";
-import { asc, eq } from "drizzle-orm";
+import type {
+  ExecutionDetailResponse,
+  ExecutionSummary,
+  RunningExecution,
+  StepRecord,
+} from "@tadori/shared";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db/client.ts";
 import {
   approvalEvents,
@@ -131,4 +136,71 @@ export async function getExecution(actor: Actor, id: string): Promise<ExecutionD
     body.canAdminCancel = e.status === "running" && (await executorBlocked(db, e.executorId));
   }
   return body;
+}
+
+/**
+ * 実行の一覧（S-11）。全件を返し、絞り込み・並べ替えは画面で行う（conventions.md 5章）。
+ * 進捗は手順のステップだけを数え、完了数には完了とスキップを数える（D-57）。
+ */
+export async function listExecutions(): Promise<ExecutionSummary[]> {
+  const progress = db
+    .select({
+      executionId: executionSteps.executionId,
+      total: sql<number>`count(*) filter (where ${executionSteps.section} = 'main')::int`.as(
+        "total",
+      ),
+      done: sql<number>`count(*) filter (where ${executionSteps.section} = 'main' and ${executionSteps.status} in ('done', 'skipped'))::int`.as(
+        "done",
+      ),
+    })
+    .from(executionSteps)
+    .groupBy(executionSteps.executionId)
+    .as("progress");
+  const rows = await db
+    .select({
+      e: executions,
+      versionNo: procedureVersions.versionNo,
+      content: procedureVersions.content,
+      done: progress.done,
+      total: progress.total,
+    })
+    .from(executions)
+    .innerJoin(procedureVersions, eq(procedureVersions.id, executions.versionId))
+    .leftJoin(progress, eq(progress.executionId, executions.id));
+  const name = await userNames(
+    db,
+    rows.map((r) => r.e.executorId),
+  );
+  return rows.map(({ e, versionNo, content, done, total }) => ({
+    id: e.id,
+    procedure: { id: e.procedureId, title: content.title },
+    versionNo,
+    executor: name(e.executorId),
+    status: e.status,
+    approvalStatus: e.approvalStatus,
+    progress: { done: done ?? 0, total: total ?? 0 },
+    startedAt: iso(e.startedAt),
+    updatedAt: iso(e.updatedAt),
+  }));
+}
+
+/** ユーザーが実行者で、実行中の実行（S-15、D-36）。開始の新しい順。 */
+export async function runningExecutionsOf(userId: string): Promise<RunningExecution[]> {
+  const rows = await db
+    .select({
+      e: executions,
+      versionNo: procedureVersions.versionNo,
+      content: procedureVersions.content,
+    })
+    .from(executions)
+    .innerJoin(procedureVersions, eq(procedureVersions.id, executions.versionId))
+    .where(and(eq(executions.executorId, userId), eq(executions.status, "running")))
+    .orderBy(desc(executions.startedAt), desc(executions.id));
+  return rows.map(({ e, versionNo, content }) => ({
+    id: e.id,
+    procedure: { id: e.procedureId, title: content.title },
+    versionNo,
+    startedAt: iso(e.startedAt),
+    updatedAt: iso(e.updatedAt),
+  }));
 }
