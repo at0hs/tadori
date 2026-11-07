@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { clearSecrets } from "@/features/executions/secret-store.ts";
 import { meQueryOptions } from "@/features/me/queries.ts";
 import { authClient } from "@/lib/auth-client.ts";
 import { visibleNavItems } from "@/lib/nav.ts";
@@ -67,6 +68,7 @@ function UserMenu({ name, roles }: { name: string; roles: string }) {
 
   const logout = async () => {
     await authClient.signOut();
+    clearSecrets();
     queryClient.clear();
     await navigate({ to: "/login" });
   };
