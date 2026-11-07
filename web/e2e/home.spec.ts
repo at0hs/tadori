@@ -144,7 +144,11 @@ test("承認すると承認待ちの区画から消える", async () => {
   const before = Number(await pending.locator('[data-slot="badge"]').first().textContent());
   expect(before).toBeGreaterThan(0);
 
-  await checker.goto(`/executions/${id}`);
+  // ページを読み直さずにアプリの中で移る（ホームのキャッシュを残したまま戻って、取り直すことを確かめる）
+  await pending.getByRole("link", { name: "すべて見る" }).click();
+  await expect(checker).toHaveURL(/approval=pending/);
+  await checker.locator(`a[href="/executions/${id}"]`).click();
+  await expect(checker).toHaveURL(`/executions/${id}`);
   await checker.getByRole("button", { name: "承認する" }).click();
   await checker.getByRole("alertdialog").getByRole("button", { name: "承認する" }).click();
   await expect(checker.getByRole("button", { name: "承認する" })).toHaveCount(0);
