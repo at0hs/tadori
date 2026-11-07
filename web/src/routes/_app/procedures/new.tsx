@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { NewProcedurePage } from "@/features/procedures/editor/editor-page.tsx";
 
-// Task 7・9 で作る（仮）。
-export const Route = createFileRoute("/_app/procedures/new")({ component: () => null });
+// S-08
+export const Route = createFileRoute("/_app/procedures/new")({
+  component: NewProcedurePage,
+});

@@ -36,13 +36,17 @@ export const versionQueryOptions = (id: string, versionNo: number) =>
       ).json(),
   });
 
-/** 編集画面に読み込む内容。編集中のフォームを上書きしないよう、自動では取り直さない。 */
+/**
+ * 編集画面に読み込む内容。画面を開くたびに最新を読み（古い revision で始めない）、
+ * 開いている間は取り直さない（フォームは最初の値だけを使う）。
+ */
 export const draftQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["procedure-draft", id],
     queryFn: async () => (await api.procedures[":id"].draft.$get({ param: { id } })).json(),
-    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 function useInvalidate() {
@@ -70,11 +74,16 @@ export function useSaveDraft(id: string) {
   });
 }
 
-export function usePublish(id: string) {
+/** 公開。S-08 では作成した直後の手順書に向けて呼ぶので、ID は引数で受ける。 */
+export function usePublish() {
   const invalidate = useInvalidate();
   return useMutation({
     meta: keepInput,
-    mutationFn: async (input: {
+    mutationFn: async ({
+      id,
+      ...input
+    }: {
+      id: string;
       content: ProcedureContent;
       lock: DraftLock;
       changeReason: string;
