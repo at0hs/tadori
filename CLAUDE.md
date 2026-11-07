@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込みまである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込み、本番用の構成（`compose.yaml`・`Dockerfile`・`backup/`。運用は `../tadori-docs/design/operations.md`）まである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -42,14 +42,17 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 | 画面のビルド | `pnpm build` |
 | マイグレーションの生成 | `pnpm --filter @tadori/server exec drizzle-kit generate --name <内容>` |
 | 管理者の復旧（D-51） | `pnpm --filter @tadori/server recover-admin <ユーザー名>`（仮のパスワードを標準エラー出力に出す） |
+| 本番の構成を起動 | `docker compose up -d --build --wait`（`.env` に本番の値。手元で試すなら `-p <別の名前> --env-file <別の .env>` で開発の DB と分ける） |
+| バックアップのスクリプトのテスト | `docker compose run --rm -T backup bash /opt/tadori/test/lib.test.sh`（Git Bash では `MSYS_NO_PATHCONV=1` を付ける） |
 
-CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルド・E2E を流す。
+CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルド・E2E を流す。別のジョブ（`compose`）で本番の構成を起動し、バックアップを取って復元の確認まで流す。
 
 ## 構成
 
 ディレクトリの役割と依存の向きは `../tadori-docs/design/conventions.md` の 1〜2章に従う。今あるものは次のとおり。
 
-- `server/src/index.ts`：起動。マイグレーション → 初期管理者（ユーザーが0人のときだけ）→ 待ち受け。
+- `server/src/index.ts`：起動。マイグレーション → 初期管理者（ユーザーが0人のときだけ）→ 待ち受け。待ち受けるのは `web-static.ts` の `createRootApp` で、`/api` は `app.ts` に渡し、`WEB_DIST_DIR` を指定したときだけビルドした画面を配信する（ファイルがなければ `index.html`）。
+- `server/src/config.ts`：環境変数の検証（`parseConfig`）。`NODE_ENV=production` で `.env.example` のダミーの秘密鍵なら起動しない。
 - `server/src/app.ts`：Hono のアプリ。ミドルウェアは**登録した順に効く**。リクエスト ID と IP → CSRF → `/api/auth/*` → `requireSession` → `/api/me` → `requirePasswordChanged` → 機能のルートの順で、機能のルートは一番下に足す。
 - `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成・無効化・パスワードの設定・復旧（`users.ts`）。ログインの操作ログは `auth.ts` の after フックで出す。
 - `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requireRole`）。
@@ -67,7 +70,9 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
 - `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）、Excel のダウンロードと「Excel に出力」の置き場所（`download.ts`）。
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
-- `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
+- `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。
+- `compose.yaml`・`Dockerfile`：本番用の app・db・backup。app のイメージは2段ビルドで、Node が `node_modules` の中の `.ts` を動かさないため、`pnpm deploy` を使わずワークスペースのシンボリックリンクのまま入れる。Node 26 には corepack がないので、pnpm は `packageManager` の版を npm で入れる。
+- `backup/`：backup のイメージ（`postgres:18` ＋スクリプト）。共通の関数は `lib.sh`（テストは `test/lib.test.sh`）、コマンドは `bin/` の `tadori-scheduler`（既定の動き）・`tadori-backup`・`tadori-verify`・`tadori-restore`。`ENTRYPOINT` を使わないのは、`docker compose run --rm backup <コマンド>` で差し替えるため。スクリプトは LF でないと動かない（`.gitattributes`）。
 
 ## 間違えやすい点
 
