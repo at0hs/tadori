@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // 編集画面の右のパネル（ui.md 7.5）：目次と変数の早見。スクロールしても残す。
 
 const ITEM =
-  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+  "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
 
 function ErrorDot() {
   return (
@@ -48,7 +48,7 @@ export function EditorRail({ onJump }: { onJump: (path: string) => void }) {
   );
 
   return (
-    <aside className="sticky top-36 hidden max-h-[calc(100vh-10rem)] gap-4 overflow-auto lg:grid">
+    <aside className="sticky top-36 hidden max-h-[calc(100vh-10rem)] min-w-0 grid-cols-1 gap-4 overflow-auto lg:grid">
       <nav className="rounded-xl border bg-card p-2" aria-label="目次">
         <button type="button" className={ITEM} onClick={() => onJump("title")}>
           <FileText className="size-4" aria-hidden />

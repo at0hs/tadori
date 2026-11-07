@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）まである。F-02 以降はまだない（ホーム・手順書・実行の画面は「まだありません」の表示）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`）。`GET /api/admin/users/{id}` の「実行中の実行」は、実行（F-05）を作るときに足す。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）まである。F-04 以降（実行）はまだない（ホーム・実行の画面は「まだありません」の表示。手順書の詳細の「実行を開始」も F-05 で足す）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`）。`GET /api/admin/users/{id}` の「実行中の実行」は、実行（F-05）を作るときに足す。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -54,14 +54,15 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成・無効化・パスワードの設定・復旧（`users.ts`）。ログインの操作ログは `auth.ts` の after フックで出す。
 - `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requireRole`）。
 - `server/src/features/users/`：管理者の API（`routes.ts`・`service.ts`）、初期管理者、復旧（`recover.ts`。入口は `server/src/cli/recover-admin.ts`）。
+- `server/src/features/procedures/`：手順書・版・下書きの API。読み込み（`read-service.ts`）と書き込み（`write-service.ts`。楽観ロックの照合は `checkLock`）、共有の読み出し（`queries.ts`）。
 - `server/src/db/`：テーブル定義（`schema/`）、接続（`client.ts`）、マイグレーション（`migrate.ts`）。生成した SQL は `server/drizzle/`。
 - `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、操作ログ（`operation-log.ts`）、本文とパスの検証（`validate.ts` の `jsonBody`・`pathParams`）、Hono の型とサービスに渡す `Operator`（`hono.ts`）。
-- `server/test/`：テストの環境変数・DB の準備・補助関数。
-- `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`）。
+- `server/test/`：テストの環境変数・DB の準備・補助関数。手順書のダミーの文書と、DB に直接入れる補助は `procedures.ts`。
+- `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`。手順書の文書 `ProcedureContent` と公開時の検証 `findPublishErrors` は `procedures.ts`）、`#{name}` の解析（`variables/parse.ts`）、UUID v7 の ID（`ids.ts` の `newId`）。
 - `web/src/routes/`：TanStack Router のルート（ファイルの並びが URL）。`_app.tsx` がログインの確認（未ログインは `/login?redirect=…`、パスワード変更が必要なら `/account/password`）と共通の枠。`routeTree.gen.ts` は Vite のプラグインが作る生成物（コミットする。Biome の対象外）。
 - `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名（`roles.ts`）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
 - `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
-- `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`）。
+- `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
 
@@ -86,6 +87,10 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **画面の移動はリンクにする**。見た目をボタンにするときは `<Link className={buttonVariants()}>` と書く（`<Button render={<Link />}>` は役割がボタンになる）。
 - **API は `lib/api.ts` の `api` で呼ぶ**（例：`api.admin.users.$get()`）。エラーは `ApiError` で届き、未ログイン・パスワード変更が必要の移動は `lib/query.ts` が行う。ログイン・ログアウト・自分のパスワードの変更だけは `authClient` を使う。
 - **`me` を変える操作の後は `invalidateQueries` で取り直す**。`removeQueries` では表示中のヘッダに伝わらない。
+- **`useFieldArray` は `keyName: "fieldKey"` にする**。既定の `id` は、ステップの `id`（記録の紐づけに使う）を上書きしてしまう。
+- **入力中の内容を残したい mutation には `meta: { keepOnUnauthenticated: true }` を付ける**（編集画面の保存など）。付けると、セッション切れでもログイン画面へ移さず、画面がエラー（`UNAUTHENTICATED`）を受け取る。
+- **編集画面に読み込む下書き（`draftQueryOptions`）は `gcTime: 0`**。開くたびに最新を読み、古い `revision` で編集を始めない。
+- E2E で CodeMirror の補完を Enter で確定するときは、候補が出てから 75ms（`interactionDelay`）以上待つ。
 - UI 部品は `web/` の `components/ui/`（shadcn からコピーした汎用の部品）にあるものを使う。ネット上のサンプルをそのまま貼らない。
 - shadcn/ui は **Base UI** ベース。部品の組み合わせは `render` プロパティで書き、Radix の `asChild` は使わない。部品ごとの引数も Radix と違うことがあるので、`components/ui/` の実装を確認してから使う。
 - Enter キーで何かを実行する処理（送信、タグの追加、候補の確定など）では、日本語の変換中（`event.nativeEvent.isComposing`）なら何もしない。

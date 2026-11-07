@@ -40,3 +40,42 @@ export async function freshPage(browser: Browser): Promise<Page> {
   await page.goto("/login");
   return page;
 }
+
+export const AUTHOR_STATES = ["e2e/.auth/author1.json", "e2e/.auth/author2.json"] as const;
+const AUTHOR_TEMP_PASSWORD = "E2e-author-temp-passw0rd";
+export const AUTHOR_PASSWORD = "E2e-author-passw0rd";
+
+/**
+ * 管理者の API で作成者を作り、1回ログインしてパスワードを変え、ログイン状態を保存する。
+ * ログインは IP ごとに 60 秒 20 回までなので、ほかのテストはこの状態を使い回す。
+ */
+export async function setupAuthor(admin: Page, browser: Browser, index: 0 | 1) {
+  const username = `author${index + 1}`;
+  const res = await admin.request.post("/api/admin/users", {
+    headers: { origin: BASE_URL },
+    data: {
+      name: `作成者 ${index === 0 ? "一郎" : "二郎"}`,
+      username,
+      email: `${username}@example.test`,
+      password: AUTHOR_TEMP_PASSWORD,
+      roles: ["author", "executor"],
+    },
+  });
+  expect(res.status()).toBe(201);
+  const page = await freshPage(browser);
+  await login(page, username, AUTHOR_TEMP_PASSWORD);
+  await changePassword(page, AUTHOR_TEMP_PASSWORD, AUTHOR_PASSWORD);
+  await expect(page).toHaveURL("/");
+  await page.context().storageState({ path: AUTHOR_STATES[index] });
+  await page.context().close();
+}
+
+/** 保存したログイン状態で、新しいページを開く。 */
+export async function pageAs(browser: Browser, state: string): Promise<Page> {
+  const context = await browser.newContext({
+    baseURL: BASE_URL,
+    locale: "ja-JP",
+    storageState: state,
+  });
+  return context.newPage();
+}

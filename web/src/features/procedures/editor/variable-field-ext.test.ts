@@ -36,6 +36,13 @@ describe("D-06: #{ の入力補完", () => {
     expect(labels(await complete("ssh #{"))).toEqual(["host", "worker_count", "admin_password"]);
   });
 
+  it("候補は定義した順に出す（CodeMirror の並べ替えより前に置く）", async () => {
+    const r = await complete("#{");
+    const boosts = r?.options.map((o) => o.boost ?? 0) ?? [];
+    expect(boosts).toEqual([...boosts].sort((a, b) => b - a));
+    expect(new Set(boosts).size).toBe(vars.length);
+  });
+
   it("名前の途中なら、その位置から補う", async () => {
     const r = await complete("ssh #{h");
     expect(r?.from).toBe(6);

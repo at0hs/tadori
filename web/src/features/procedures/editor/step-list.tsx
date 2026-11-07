@@ -442,7 +442,7 @@ function StepCard({
           aria-label={`${label}のタイトル`}
           placeholder="ステップのタイトル（必須）"
           aria-invalid={err?.title ? true : undefined}
-          className="flex-1 border-transparent bg-transparent font-medium hover:border-input"
+          className="flex-1 border-transparent bg-transparent font-medium hover:border-input dark:bg-transparent"
           {...register(`${name}.${index}.title`)}
         />
         <Controller

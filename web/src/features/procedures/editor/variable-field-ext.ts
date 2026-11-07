@@ -36,7 +36,9 @@ export function variableCompletions(getVariables: () => ProcedureVariable[]): Co
     return {
       from,
       validFor: /^[A-Za-z0-9_-]*$/,
-      options: variables.map((v) => ({
+      // 定義した順に出す。CodeMirror は boost の大きい順に並べる（-99〜99、変数は100個まで）
+      options: variables.map((v, i) => ({
+        boost: 99 - i,
         label: v.name,
         detail: v.secret ? `${v.description}（秘密）` : v.description,
         type: v.secret ? "secret" : "variable",
