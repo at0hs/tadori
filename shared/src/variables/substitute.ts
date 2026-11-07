@@ -44,11 +44,31 @@ export const SECRET_MIN_LENGTH = 4;
 
 /**
  * テキストの中の秘密変数の値を、すべて `SECRET_MASK` に置き換える。
- * 値が別の値を含むときに備えて長い値から順に置き換え、正規表現は使わない（値の記号を文字どおりに扱う）。
+ * 先に元のテキストで値に一致する範囲をすべて探し、重なる・接する範囲を1つにまとめてから置き換える
+ * （値を順に置き換えると、端が重なる2つの値がつながったとき、後の値の一部が平文で残るため）。
+ * 正規表現は使わない（値の記号を文字どおりに扱う）。
  */
 export function maskSecrets(text: string, values: readonly string[]): string {
-  const sorted = values.filter((v) => v !== "").sort((a, b) => b.length - a.length);
-  let result = text;
-  for (const v of sorted) result = result.split(v).join(SECRET_MASK);
-  return result;
+  const ranges: [number, number][] = [];
+  for (const v of values) {
+    if (v === "") continue;
+    for (let i = text.indexOf(v); i !== -1; i = text.indexOf(v, i + 1)) {
+      ranges.push([i, i + v.length]);
+    }
+  }
+  if (ranges.length === 0) return text;
+  ranges.sort((a, b) => a[0] - b[0]);
+  let result = "";
+  let pos = 0;
+  let [start, end] = ranges[0] as [number, number];
+  for (const [s, e] of ranges.slice(1)) {
+    if (s <= end) {
+      end = Math.max(end, e);
+      continue;
+    }
+    result += text.slice(pos, start) + SECRET_MASK;
+    pos = end;
+    [start, end] = [s, e];
+  }
+  return result + text.slice(pos, start) + SECRET_MASK + text.slice(end);
 }
