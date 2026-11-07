@@ -1,4 +1,5 @@
 export { ERROR_CODES, type ErrorCode } from "./errors/codes.ts";
+export { newId } from "./ids.ts";
 export { type MeResponse, meResponseSchema } from "./schemas/me.ts";
 export { ROLES, type Role, roleSchema } from "./schemas/roles.ts";
 export {
@@ -22,3 +23,4 @@ export {
   usernameSchema,
   userRoleParamSchema,
 } from "./schemas/users.ts";
+export { findVariableRefs, VARIABLE_NAME_RE, type VariableRef } from "./variables/parse.ts";
