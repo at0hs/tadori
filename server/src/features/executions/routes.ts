@@ -1,14 +1,20 @@
 import {
+  commentRequestSchema,
   type ExecutionDetailResponse,
+  evidenceRequestSchema,
   executionIdParamSchema,
   type StartExecutionResponse,
   startExecutionRequestSchema,
+  stepParamSchema,
+  stepStatusChangeRequestSchema,
+  updateVariablesRequestSchema,
 } from "@tadori/shared";
 import { Hono } from "hono";
 import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
 import { requireRole } from "../../middleware/role.ts";
 import { getExecution } from "./read-service.ts";
+import { addComment, addEvidence, changeStepStatus, updateVariables } from "./record-service.ts";
 import { startExecution } from "./start-service.ts";
 
 // 実行の API（api.md 4.4、authorization.md 3.3）。
@@ -24,4 +30,47 @@ export const executionRoutes = new Hono<AppEnv>()
   .post("/", requireRole("executor"), jsonBody(startExecutionRequestSchema), async (c) => {
     const body: StartExecutionResponse = await startExecution(operatorOf(c), c.req.valid("json"));
     return c.json(body, 201);
-  });
+  })
+  .put(
+    "/:id/variables",
+    requireRole("executor"),
+    pathParams(executionIdParamSchema),
+    jsonBody(updateVariablesRequestSchema),
+    async (c) => {
+      await updateVariables(operatorOf(c), c.req.valid("param").id, c.req.valid("json").variables);
+      return c.body(null, 204);
+    },
+  )
+  .post(
+    "/:id/steps/:stepId/status-changes",
+    requireRole("executor"),
+    pathParams(stepParamSchema),
+    jsonBody(stepStatusChangeRequestSchema),
+    async (c) => {
+      const { id, stepId } = c.req.valid("param");
+      await changeStepStatus(operatorOf(c), id, stepId, c.req.valid("json"));
+      return c.body(null, 204);
+    },
+  )
+  .post(
+    "/:id/steps/:stepId/comments",
+    requireRole("executor"),
+    pathParams(stepParamSchema),
+    jsonBody(commentRequestSchema),
+    async (c) => {
+      const { id, stepId } = c.req.valid("param");
+      await addComment(operatorOf(c), id, stepId, c.req.valid("json").body);
+      return c.body(null, 204);
+    },
+  )
+  .post(
+    "/:id/steps/:stepId/evidences",
+    requireRole("executor"),
+    pathParams(stepParamSchema),
+    jsonBody(evidenceRequestSchema),
+    async (c) => {
+      const { id, stepId } = c.req.valid("param");
+      await addEvidence(operatorOf(c), id, stepId, c.req.valid("json").body);
+      return c.body(null, 204);
+    },
+  );

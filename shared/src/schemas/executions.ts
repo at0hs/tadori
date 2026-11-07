@@ -228,3 +228,15 @@ export const runningExecutionSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type RunningExecution = z.infer<typeof runningExecutionSchema>;
+
+/**
+ * STEP_STATUS_CONFLICT の応答に付ける項目（D-46）。
+ * Problem Details の status（HTTP の状態コード）とぶつからないよう、今の状態は currentStatus で返す。
+ */
+export const stepStatusConflictSchema = z.object({
+  stepId: z.uuid(),
+  currentStatus: stepStatusSchema,
+  updatedBy: userRefSchema.nullable(),
+  updatedAt: z.iso.datetime().nullable(),
+});
+export type StepStatusConflict = z.infer<typeof stepStatusConflictSchema>;
