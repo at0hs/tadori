@@ -1,5 +1,6 @@
 export { ERROR_CODES, type ErrorCode } from "./errors/codes.ts";
 export { newId } from "./ids.ts";
+export * from "./schemas/approvals.ts";
 export * from "./schemas/executions.ts";
 export { type MeResponse, meResponseSchema } from "./schemas/me.ts";
 export * from "./schemas/procedures.ts";

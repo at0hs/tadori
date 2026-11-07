@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { authRoutes } from "./auth/routes.ts";
+import { approvalRoutes } from "./features/approvals/routes.ts";
 import { executionRoutes } from "./features/executions/routes.ts";
 import { meRoutes } from "./features/me/routes.ts";
 import { procedureRoutes } from "./features/procedures/routes.ts";
@@ -28,7 +29,8 @@ export const app = new Hono<AppEnv>()
   .use(requirePasswordChanged)
   .route("/admin/users", adminUserRoutes)
   .route("/procedures", procedureRoutes)
-  .route("/executions", executionRoutes);
+  .route("/executions", executionRoutes)
+  .route("/executions", approvalRoutes);
 
 app.notFound(() => problemResponse("NOT_FOUND"));
 
