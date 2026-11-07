@@ -8,4 +8,6 @@ ENV TZ=Asia/Tokyo \
   PGHOST=db \
   PGUSER=tadori \
   PGDATABASE=tadori
-ENTRYPOINT ["tadori-scheduler"]
+# ENTRYPOINT にしない。`docker compose run --rm backup tadori-verify` のようにコマンドを差し替えて使うため。
+ENTRYPOINT []
+CMD ["tadori-scheduler"]
