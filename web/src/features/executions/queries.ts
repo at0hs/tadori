@@ -1,6 +1,7 @@
 import type { StartExecutionRequest, StepStatusChangeRequest } from "@tadori/shared";
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api.ts";
+import { fileNameFromDisposition, saveBlob } from "./download.ts";
 
 // 実行（api.md 4.4）。操作の後は成功・失敗のどちらでも実行の Query を取り直す
 // （STEP_STATUS_CONFLICT・STATE_CONFLICT のときに最新を見せるため）。
@@ -136,5 +137,17 @@ export function useResubmitExecution(id: string) {
     // 書いたコメントを残すため、セッション切れでもログイン画面へ移さない（ダイアログに出す）
     meta: { keepOnUnauthenticated: true },
     onSettled: invalidate,
+  });
+}
+
+// Excel 出力（api.md 5.3、F-09）。実行は変わらないので取り直さない。
+
+export function useExportExecution(id: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.executions[":id"].export.$get({ param: { id } });
+      const name = fileNameFromDisposition(res.headers.get("Content-Disposition"));
+      saveBlob(await res.blob(), name ?? "execution.xlsx");
+    },
   });
 }

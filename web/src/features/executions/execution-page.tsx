@@ -15,6 +15,7 @@ import {
   CircleAlert,
   Ellipsis,
   ExternalLink,
+  FileSpreadsheet,
   Flag,
   Hourglass,
   KeyRound,
@@ -35,6 +36,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,6 +46,7 @@ import { isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
 import { approvalAction } from "./approval-action.ts";
+import { exportPlacement } from "./download.ts";
 import { ExecutionDialogs } from "./execution-dialogs.tsx";
 import { ApprovalsCard, ProgressCard, VariablesCard } from "./execution-rail.tsx";
 import {
@@ -52,7 +55,7 @@ import {
   ExecutionStatusLabel,
   STEP_STATUS_META,
 } from "./execution-status.tsx";
-import { executionQueryOptions, useChangeStepStatus } from "./queries.ts";
+import { executionQueryOptions, useChangeStepStatus, useExportExecution } from "./queries.ts";
 import type { RenderContext } from "./render.ts";
 import { useSecrets } from "./secret-store.ts";
 import { StepCard, type StepCardEnv, stepLabel } from "./step-card.tsx";
@@ -119,6 +122,7 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [rollbackOpen, setRollbackOpen] = useState(false);
   const changeStatus = useChangeStepStatus(detail.id);
+  const exportExecution = useExportExecution(detail.id);
 
   const self = detail.executor.id === me.id;
   const owner = canOperate(detail, me);
@@ -132,6 +136,9 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
   const ctx: RenderContext = { values: detail.variables, secretNames, secrets, reveal };
 
   const onResult = (e?: unknown) => setFailure(e);
+  const placement = exportPlacement(operate, action);
+  const onExport = () =>
+    exportExecution.mutate(undefined, { onSuccess: () => onResult(), onError: onResult });
   const env: StepCardEnv = {
     executionId: detail.id,
     ctx,
@@ -195,12 +202,37 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
             <span>最終更新 {formatShortDateTime(detail.updatedAt)}</span>
           </div>
         </div>
-        {operate && (
-          <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
+          {operate && (
             <Button onClick={() => setDialog({ kind: "finish" })}>
               <Flag aria-hidden />
               終了する
             </Button>
+          )}
+          {action === "review" && (
+            <>
+              <Button variant="outline" onClick={() => setDialog({ kind: "reject" })}>
+                <Undo2 aria-hidden />
+                差し戻す
+              </Button>
+              <Button onClick={() => setDialog({ kind: "approve" })}>
+                <BadgeCheck aria-hidden />
+                承認する
+              </Button>
+            </>
+          )}
+          {action === "resubmit" && (
+            <Button onClick={() => setDialog({ kind: "resubmit" })}>
+              <Send aria-hidden />
+              再依頼する
+            </Button>
+          )}
+          {placement === "button" ? (
+            <Button variant="outline" disabled={exportExecution.isPending} onClick={onExport}>
+              <FileSpreadsheet aria-hidden />
+              Excel に出力
+            </Button>
+          ) : (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button variant="ghost" size="icon" aria-label="その他の操作" />}
@@ -208,35 +240,26 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
                 <Ellipsis aria-hidden />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setDialog({ kind: "cancel", mode: "executor" })}
-                >
-                  <Ban aria-hidden />
-                  中止する
+                <DropdownMenuItem disabled={exportExecution.isPending} onClick={onExport}>
+                  <FileSpreadsheet aria-hidden />
+                  Excel に出力
                 </DropdownMenuItem>
+                {operate && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => setDialog({ kind: "cancel", mode: "executor" })}
+                    >
+                      <Ban aria-hidden />
+                      中止する
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        )}
-        {action === "review" && (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" onClick={() => setDialog({ kind: "reject" })}>
-              <Undo2 aria-hidden />
-              差し戻す
-            </Button>
-            <Button onClick={() => setDialog({ kind: "approve" })}>
-              <BadgeCheck aria-hidden />
-              承認する
-            </Button>
-          </div>
-        )}
-        {action === "resubmit" && (
-          <Button className="shrink-0" onClick={() => setDialog({ kind: "resubmit" })}>
-            <Send aria-hidden />
-            再依頼する
-          </Button>
-        )}
+          )}
+        </div>
       </div>
 
       <ExecutionBanner
