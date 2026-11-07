@@ -35,6 +35,7 @@ import {
 } from "../queries.ts";
 import { ConflictBanner, ErrorListBanner, SessionBanner } from "./conflict-banner.tsx";
 import { DiscardDialog, PublishDialog, UnsavedDialog } from "./editor-dialogs.tsx";
+import { EditorRail } from "./editor-rail.tsx";
 import { type ErrorRow, emptyContent, errorSummary, toFormPath } from "./form.ts";
 import { BasicSection, PrerequisitesSection, SectionTitle, VariablesSection } from "./sections.tsx";
 import { StepList } from "./step-list.tsx";
@@ -407,24 +408,34 @@ export function ProcedureEditor({
           </div>
         )}
 
-        <div className="mt-4 grid gap-4">
-          <BasicSection tagSuggestions={tagSuggestions} />
-          <PrerequisitesSection />
-          <VariablesSection />
-          <section id="sec-steps" className="scroll-mt-48">
-            <div className="mb-2 flex items-baseline gap-2">
-              <SectionTitle icon={ListOrdered}>手順</SectionTitle>
-            </div>
-            <StepList name="steps" variables={variables} initiallyOpen={mode === "new" ? 0 : 2} />
-          </section>
-          <section id="sec-rb" className="mt-2 scroll-mt-48">
-            <div className="mb-2 flex items-baseline gap-2">
-              <SectionTitle icon={Undo2} iconClass="text-warning">
-                切り戻し手順
-              </SectionTitle>
-            </div>
-            <StepList name="rollbackSteps" variables={variables} initiallyOpen={0} />
-          </section>
+        {/* 配置は案2：本文を縦に並べ、右に目次と変数の早見を固定する（ui.md 7.1） */}
+        <div className="mt-4 grid items-start gap-6 lg:grid-cols-[1fr_15rem]">
+          <div className="grid min-w-0 gap-4">
+            <BasicSection tagSuggestions={tagSuggestions} />
+            <PrerequisitesSection />
+            <VariablesSection />
+            <section id="sec-steps" className="scroll-mt-48">
+              <StepList
+                name="steps"
+                variables={variables}
+                initiallyOpen={mode === "new" ? 0 : 2}
+                header={<SectionTitle icon={ListOrdered}>手順</SectionTitle>}
+              />
+            </section>
+            <section id="sec-rb" className="mt-2 scroll-mt-48">
+              <StepList
+                name="rollbackSteps"
+                variables={variables}
+                initiallyOpen={0}
+                header={
+                  <SectionTitle icon={Undo2} iconClass="text-warning">
+                    切り戻し手順
+                  </SectionTitle>
+                }
+              />
+            </section>
+          </div>
+          <EditorRail onJump={jumpTo} />
         </div>
       </form>
 
