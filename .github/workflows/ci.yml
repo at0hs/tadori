@@ -58,7 +58,7 @@ jobs:
           INITIAL_ADMIN_USERNAME=admin
           INITIAL_ADMIN_NAME=管理者
           INITIAL_ADMIN_EMAIL=admin@example.test
-          INITIAL_ADMIN_PASSWORD=Initial-passw0rd-dummy
+          INITIAL_ADMIN_PASSWORD=Ci-initial-passw0rd
           ENV
       - run: docker compose up -d --build --wait
       - run: curl -fsS http://localhost:3000/api/health

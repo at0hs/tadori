@@ -11,19 +11,37 @@ times_text=$(parse_times "${BACKUP_TIMES:-03:00}")
 mapfile -t times <<<"$times_text"
 keep="${BACKUP_KEEP:-7}"
 validate_keep "$keep"
+auto="$BACKUP_ROOT/auto"
 
-log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
-while true; do
-  now=$(date +%s)
-  wait_seconds=$(seconds_until_next "$now" "${times[@]}")
-  log "次のバックアップ：$(date -d "@$((now + wait_seconds))" '+%F %T')"
-  # sleep を裏で動かして wait する（TERM をすぐ受け取るため）
-  sleep "$wait_seconds" &
-  wait $!
-  if path=$(dump_to "$BACKUP_ROOT/auto"); then
+take_backup() {
+  local path
+  if path=$(dump_to "$auto"); then
     log "バックアップを取った：$path"
-    rotate "$BACKUP_ROOT/auto" "$keep"
+    rotate "$auto" "$keep"
   else
     err "バックアップに失敗した（古いバックアップは消していない）"
   fi
+}
+
+log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
+
+# 直前の時刻にホストが止まっていた（夜に電源を落とす PC など）なら、起動してすぐ取る
+mkdir -p "$auto"
+latest=$(find "$auto" -maxdepth 1 -type f -name 'tadori-*.dump' -printf '%f\n' | sort | tail -n 1)
+if missed_backup "$(date +%s)" "${latest:+$auto/$latest}" "${times[@]}"; then
+  log "直前の時刻のバックアップがないので、今取る"
+  take_backup
+fi
+
+while true; do
+  target=$(($(date +%s) + $(seconds_until_next "$(date +%s)" "${times[@]}")))
+  log "次のバックアップ：$(date -d "@$target" '+%F %T')"
+  # 60秒ごとに時計を見直す（ホストがスリープしている間は sleep が進まないため）。
+  # sleep を裏で動かして wait する（TERM をすぐ受け取るため）。
+  while (($(date +%s) < target)); do
+    remaining=$((target - $(date +%s)))
+    sleep $((remaining < 60 ? remaining : 60)) &
+    wait $!
+  done
+  take_backup
 done

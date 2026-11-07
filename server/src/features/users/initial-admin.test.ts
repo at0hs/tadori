@@ -35,6 +35,18 @@ describe("初期管理者（D-20）", () => {
     expect(me).toMatchObject({ username: "admin", roles: ["admin"], mustChangePassword: true });
   });
 
+  it("本番では .env.example のダミーの初期パスワードで作らない", async () => {
+    await expect(ensureInitialAdmin({ ...CFG, NODE_ENV: "production" })).rejects.toThrow(
+      /INITIAL_ADMIN_PASSWORD/,
+    );
+    expect(await db.select().from(user)).toHaveLength(0);
+  });
+
+  it("本番でもユーザーがいればダミーの初期パスワードは問わない", async () => {
+    await createUser({ username: "user01" });
+    expect(await ensureInitialAdmin({ ...CFG, NODE_ENV: "production" })).toBe("skipped");
+  });
+
   it("ユーザーがいれば何もしない", async () => {
     await createUser({ username: "user01" });
     expect(await ensureInitialAdmin(CFG)).toBe("skipped");

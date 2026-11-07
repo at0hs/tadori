@@ -8,8 +8,16 @@ import { logger } from "../../lib/logger.ts";
 
 type InitialAdminConfig = Pick<
   Config,
-  "INITIAL_ADMIN_USERNAME" | "INITIAL_ADMIN_NAME" | "INITIAL_ADMIN_EMAIL" | "INITIAL_ADMIN_PASSWORD"
+  | "INITIAL_ADMIN_USERNAME"
+  | "INITIAL_ADMIN_NAME"
+  | "INITIAL_ADMIN_EMAIL"
+  | "INITIAL_ADMIN_PASSWORD"
+  | "NODE_ENV"
 >;
+
+// .env.example のダミーの初期パスワード。公開されている値なので、本番ではこのまま管理者を作らない
+// （正規の管理者より先に、同じネットワークの人がログインしてパスワードを変えられてしまう）。
+const EXAMPLE_PASSWORD = "Initial-passw0rd-dummy";
 
 /**
  * ユーザーが1人もいなければ、.env の値で初期管理者を作る（D-20、authorization.md 4.3）。
@@ -26,6 +34,12 @@ export async function ensureInitialAdmin(cfg: InitialAdminConfig): Promise<"crea
   if (!username || !name || !email || !password) {
     throw new Error(
       "ユーザーがいないため初期管理者を作るが、INITIAL_ADMIN_USERNAME・INITIAL_ADMIN_NAME・INITIAL_ADMIN_EMAIL・INITIAL_ADMIN_PASSWORD のどれかがない",
+    );
+  }
+
+  if (cfg.NODE_ENV === "production" && password === EXAMPLE_PASSWORD) {
+    throw new Error(
+      "INITIAL_ADMIN_PASSWORD が .env.example のダミーの値のままです。別の値にしてください",
     );
   }
 

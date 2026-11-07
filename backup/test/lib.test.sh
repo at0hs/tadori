@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # backup/lib.sh のテスト。backup のイメージの中で動かす：
-#   docker compose run --rm --entrypoint bash backup /opt/tadori/test/lib.test.sh
+#   docker compose run --rm -T backup bash /opt/tadori/test/lib.test.sh
 set -uo pipefail
 export TZ=Asia/Tokyo
 # shellcheck source=../lib.sh
@@ -50,6 +50,22 @@ assert_eq "ちょうどの時刻なら翌日" 86400 "$(seconds_until_next "$(epo
 assert_eq "日付をまたぐ" 10860 "$(seconds_until_next "$(epoch "2026-11-08 23:59:00")" 03:00)"
 assert_eq "複数の時刻のうち次" 3600 "$(seconds_until_next "$(epoch "2026-11-08 14:00:00")" 03:00 15:00)"
 assert_eq "月をまたぐ" 10800 "$(seconds_until_next "$(epoch "2026-11-30 15:00:00")" 03:00 15:00 18:00)"
+
+# previous_slot・dump_epoch・missed_backup（ホストが止まっていた時刻の取り直し）
+assert_eq "今日のうち直前の時刻" "$(epoch "2026-11-08 03:00:00")" "$(previous_slot "$(epoch "2026-11-08 14:00:00")" 03:00 15:00)"
+assert_eq "ちょうどの時刻はその時刻" "$(epoch "2026-11-08 15:00:00")" "$(previous_slot "$(epoch "2026-11-08 15:00:00")" 03:00 15:00)"
+assert_eq "今日の最初より前なら前の日の最後" "$(epoch "2026-11-07 15:00:00")" "$(previous_slot "$(epoch "2026-11-08 02:00:00")" 03:00 15:00)"
+assert_eq "ダンプの名前から日時" "$(epoch "2026-11-08 03:00:05")" "$(dump_epoch /backups/auto/tadori-20261108-030005.dump)"
+now=$(epoch "2026-11-08 09:00:00")
+if missed_backup "$now" "" 03:00; then echo "ok   ダンプがなければ取る"; else echo "FAIL ダンプがなければ取る"; failures=$((failures + 1)); fi
+if missed_backup "$now" /b/auto/tadori-20261107-030000.dump 03:00; then echo "ok   直前の時刻より古ければ取る"; else echo "FAIL 直前の時刻より古ければ取る"; failures=$((failures + 1)); fi
+assert_fails "直前の時刻に取れていれば取らない" missed_backup "$now" /b/auto/tadori-20261108-030001.dump 03:00
+
+# check_dump（壊れたダンプを断る）
+dir=$(mktemp -d)
+echo "not a dump" >"$dir/broken.dump"
+assert_fails "壊れたダンプを断る" check_dump "$dir/broken.dump"
+rm -rf "$dir"
 
 # rotate
 dir=$(mktemp -d)

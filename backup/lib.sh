@@ -50,6 +50,44 @@ seconds_until_next() {
   echo $((at - now))
 }
 
+# now_epoch 以前で一番近い実行の時刻（今日のうちになければ前の日の最後の時刻）
+previous_slot() {
+  local now="$1" today t at prev=""
+  shift
+  today=$(date -d "@$now" +%F)
+  for t in "$@"; do
+    at=$(date -d "$today $t" +%s)
+    if ((at <= now)); then prev=$at; fi
+  done
+  if [[ -z "$prev" ]]; then
+    prev=$(date -d "$(date -d "$today - 1 day" +%F) ${*: -1}" +%s)
+  fi
+  echo "$prev"
+}
+
+# ダンプの名前（tadori-YYYYMMDD-HHMMSS.dump）の日時
+dump_epoch() {
+  local name d
+  name=$(basename "$1")
+  d="${name#tadori-}"
+  d="${d%.dump}"
+  date -d "${d:0:4}-${d:4:2}-${d:6:2} ${d:9:2}:${d:11:2}:${d:13:2}" +%s
+}
+
+# 直前の実行の時刻に取れていなければ 0（ホストが止まっていた・スリープしていたなど）。
+# latest は auto/ の一番新しいダンプ（なければ空）。
+missed_backup() {
+  local now="$1" latest="$2"
+  shift 2
+  [[ -z "$latest" ]] && return 0
+  (($(dump_epoch "$latest") < $(previous_slot "$now" "$@")))
+}
+
+# ダンプとして読めるか（形式と目次）を確かめる。root で読んで標準入力から渡す。
+check_dump() {
+  pg_restore -l <"$1" >/dev/null 2>&1
+}
+
 # dir にダンプを取り、そのパスを出す。書きかけは一時的な名前にし、成功してから本来の名前に変える。
 dump_to() {
   local dir="$1" name tmp

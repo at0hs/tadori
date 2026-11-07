@@ -3,14 +3,16 @@
 #   docker compose stop app
 #   docker compose exec backup tadori-restore <ダンプ> [--yes]
 #   docker compose start app
+# 戻す前に、今の DB を backups/manual/ に取る（--no-backup で省ける。今の DB が壊れていて取れないときに使う）。
 set -euo pipefail
 # shellcheck source=../lib.sh
 source /opt/tadori/lib.sh
 
-given="" yes=false
+given="" yes=false backup_before=true
 for arg in "$@"; do
   case "$arg" in
     --yes) yes=true ;;
+    --no-backup) backup_before=false ;;
     *) given="$arg" ;;
   esac
 done
@@ -19,6 +21,11 @@ if [[ -z "$given" ]]; then
   exit 1
 fi
 dump=$(resolve_dump "$given")
+# 壊れたダンプや取り違えたファイルで、今の DB を消さない
+if ! check_dump "$dump"; then
+  err "「$dump」は pg_dump -Fc のダンプとして読めません。DB には触っていません"
+  exit 1
+fi
 
 # app などがつないでいる間は戻さない（書き込みと混ざる）
 others=$(psql -X -At -d postgres -c \
@@ -41,12 +48,25 @@ if ! $yes; then
   fi
 fi
 
+umask 077
+before=""
+if $backup_before; then
+  if ! before=$(dump_to "$BACKUP_ROOT/manual"); then
+    err "戻す前の今の DB を取れなかったので、やめた。今の DB を残さずに戻すなら --no-backup を付けてください"
+    exit 1
+  fi
+  log "戻す前の今の DB を取った：$before"
+fi
+
 log "復元を始める：$dump"
 psql -X -q -d postgres -v ON_ERROR_STOP=1 \
   -c "DROP DATABASE \"$PGDATABASE\"" \
   -c "CREATE DATABASE \"$PGDATABASE\" OWNER \"$PGUSER\""
 if ! pg_restore --exit-on-error --no-owner -d "$PGDATABASE" <"$dump"; then
-  err "復元に失敗した。DB は途中の状態なので、もう一度実行してください"
+  err "復元に失敗した。DB は途中の状態になっている"
+  if [[ -n "$before" ]]; then
+    err "戻す前の状態には、tadori-restore $before --yes で戻せる"
+  fi
   exit 1
 fi
 log "復元した。app を起動してください（docker compose start app）"
