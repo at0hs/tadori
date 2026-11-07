@@ -52,8 +52,17 @@ describe("maskSecrets", () => {
     );
   });
 
-  it("長い値から順に置き換える", () => {
+  it("値が別の値を含むときは、まとめて1つの ●●●● にする", () => {
     expect(maskSecrets("abcdefgh", ["abcd", "abcdefgh"])).toBe(SECRET_MASK);
+  });
+
+  it("2つの値の端が重なってつながっていても、どちらの一部も残さない", () => {
+    expect(maskSecrets("x abcdefgh y", ["abcdef", "efgh"])).toBe(`x ${SECRET_MASK} y`);
+    expect(maskSecrets("x efghabcdef y", ["abcdef", "efgh"])).toBe(`x ${SECRET_MASK} y`);
+  });
+
+  it("同じ値の出現が重なっていても、残さない", () => {
+    expect(maskSecrets("aaaaa", ["aaaa"])).toBe(SECRET_MASK);
   });
 
   it("正規表現の記号を文字どおりに扱う", () => {
