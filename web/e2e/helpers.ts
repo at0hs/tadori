@@ -64,10 +64,24 @@ export async function setupAuthor(admin: Page, browser: Browser, index: 0 | 1) {
   expect(res.status()).toBe(201);
   const page = await freshPage(browser);
   await login(page, username, AUTHOR_TEMP_PASSWORD);
-  await changePassword(page, AUTHOR_TEMP_PASSWORD, AUTHOR_PASSWORD);
-  await expect(page).toHaveURL("/");
+  await firstPasswordChange(page, AUTHOR_TEMP_PASSWORD, AUTHOR_PASSWORD);
   await page.context().storageState({ path: AUTHOR_STATES[index] });
   await page.context().close();
+}
+
+/**
+ * 初回のパスワード変更をしてホームに移るまで。Better Auth はパスワードの変更を IP ごとに
+ * 10 秒 3 回までにしているので、ほかのファイルの変更と重なって断られたら、10 秒待ってやり直す。
+ */
+export async function firstPasswordChange(page: Page, current: string, next: string) {
+  await changePassword(page, current, next);
+  const limited = page.getByText("パスワードを変更できませんでした。");
+  await expect(page.getByRole("heading", { name: "ホーム" }).or(limited)).toBeVisible();
+  if (await limited.isVisible()) {
+    await page.waitForTimeout(10_000);
+    await page.getByRole("button", { name: "変更する" }).click();
+  }
+  await expect(page).toHaveURL("/");
 }
 
 /** 保存したログイン状態で、新しいページを開く。 */

@@ -11,6 +11,7 @@ export type ExecutionFilter = {
   status: readonly ExecutionStatus[];
   approval?: ApprovalStatus;
   procedure?: string;
+  executor?: string;
   sort: ExecutionSort;
 };
 
@@ -27,12 +28,22 @@ function matchesCard(e: ExecutionSummary, card: ExecutionListFilter): boolean {
   }
 }
 
-/** 件数のカード。手順書の絞り込みだけは効かせる（S-05 から来たときの「この手順書の実行」） */
+/** 手順書と実行者の絞り込み（件数のカードにも効かせる） */
+export type ExecutionScope = { procedure?: string; executor?: string };
+
+function inScope(e: ExecutionSummary, scope: ExecutionScope): boolean {
+  return (
+    (scope.procedure === undefined || e.procedure.id === scope.procedure) &&
+    (scope.executor === undefined || e.executor.id === scope.executor)
+  );
+}
+
+/** 件数のカード。手順書と実行者の絞り込みだけは効かせる（S-05・ホームから来たとき） */
 export function executionCounts(
   list: ExecutionSummary[],
-  procedure?: string,
+  scope: ExecutionScope,
 ): Record<ExecutionListFilter, number> {
-  const scoped = procedure ? list.filter((e) => e.procedure.id === procedure) : list;
+  const scoped = list.filter((e) => inScope(e, scope));
   return {
     all: scoped.length,
     running: scoped.filter((e) => matchesCard(e, "running")).length,
@@ -48,7 +59,7 @@ export function filterExecutions(list: ExecutionSummary[], f: ExecutionFilter): 
       matchesCard(e, f.card) &&
       (f.status.length === 0 || f.status.includes(e.status)) &&
       (f.approval === undefined || e.approvalStatus === f.approval) &&
-      (f.procedure === undefined || e.procedure.id === f.procedure),
+      inScope(e, f),
   );
   const key = f.sort === "started" ? "startedAt" : "updatedAt";
   return shown.sort((a, b) => b[key].localeCompare(a[key]));

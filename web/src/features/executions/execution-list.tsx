@@ -19,6 +19,7 @@ import {
   ListChecks,
   Play,
   SearchX,
+  User,
   X,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state.tsx";
@@ -72,6 +73,11 @@ const APPROVAL_LABELS: Record<ApprovalStatus, string> = {
   rejected: "差し戻し",
 };
 
+/** 一覧の中の実行から、実行者の名前を取る（ホームの「すべて見る」から来たときのチップ） */
+export function executorNameOf(list: ExecutionSummary[] | undefined, userId: string) {
+  return list?.find((e) => e.executor.id === userId)?.executor.name;
+}
+
 /** 一覧の中の実行から、手順書のタイトルを取る（S-05 から来たときの見出し・チップ） */
 export function procedureTitleOf(list: ExecutionSummary[] | undefined, procedureId: string) {
   return list?.find((e) => e.procedure.id === procedureId)?.procedure.title;
@@ -86,17 +92,22 @@ export function ExecutionList({
   onFilterChange: (next: Partial<ExecutionFilter>) => void;
 }) {
   const { data: list, error, isPending } = useQuery(executionListQueryOptions);
-  const counts = list ? executionCounts(list, filter.procedure) : undefined;
+  const counts = list ? executionCounts(list, filter) : undefined;
   const shown = list ? filterExecutions(list, filter) : [];
   const procedures = [
     ...new Map((list ?? []).map((e) => [e.procedure.id, e.procedure.title])).entries(),
+  ].sort((a, b) => a[1].localeCompare(b[1], "ja"));
+  const executors = [
+    ...new Map((list ?? []).map((e) => [e.executor.id, e.executor.name])).entries(),
   ].sort((a, b) => a[1].localeCompare(b[1], "ja"));
   const narrowed =
     filter.card !== "all" ||
     filter.status.length > 0 ||
     filter.approval !== undefined ||
-    filter.procedure !== undefined;
+    filter.procedure !== undefined ||
+    filter.executor !== undefined;
   const procedureTitle = filter.procedure && procedureTitleOf(list, filter.procedure);
+  const executorName = filter.executor && executorNameOf(list, filter.executor);
 
   return (
     <>
@@ -159,6 +170,47 @@ export function ExecutionList({
                   {procedures.map(([id, title]) => (
                     <DropdownMenuRadioItem key={id} value={id}>
                       {title}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {filter.executor ? (
+          <Badge
+            variant="outline"
+            className="h-8 gap-1 rounded-lg border-primary/40 bg-accent px-2.5 text-sm text-accent-foreground"
+          >
+            <User aria-hidden />
+            {executorName ? `実行者：${executorName}` : "実行者"}
+            <button
+              type="button"
+              aria-label="実行者の絞り込みを外す"
+              className="ml-1 opacity-70 hover:opacity-100"
+              onClick={() => onFilterChange({ executor: undefined })}
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          </Badge>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" />}>
+              <User aria-hidden />
+              実行者
+              <ChevronDown className="text-muted-foreground" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {executors.length === 0 ? (
+                <p className="px-2 py-1.5 text-sm text-muted-foreground">実行はまだありません</p>
+              ) : (
+                <DropdownMenuRadioGroup
+                  value={filter.executor ?? ""}
+                  onValueChange={(v) => onFilterChange({ executor: v as string })}
+                >
+                  {executors.map(([id, name]) => (
+                    <DropdownMenuRadioItem key={id} value={id}>
+                      {name}
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
@@ -283,6 +335,7 @@ export function ExecutionList({
                       status: [],
                       approval: undefined,
                       procedure: undefined,
+                      executor: undefined,
                     })
                   }
                 >
@@ -334,7 +387,7 @@ function ListFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProgressBar({ execution: e }: { execution: ExecutionSummary }) {
+export function ProgressBar({ execution: e }: { execution: ExecutionSummary }) {
   const { done, total } = e.progress;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const color =

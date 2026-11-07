@@ -78,6 +78,45 @@ test("approval と procedure", () => {
 });
 
 test("件数のカード（手順書の絞り込みは効かせる）", () => {
-  expect(executionCounts(list)).toEqual({ all: 4, running: 1, pending: 1, rejected: 1 });
-  expect(executionCounts(list, "p2")).toEqual({ all: 2, running: 0, pending: 0, rejected: 1 });
+  expect(executionCounts(list, {})).toEqual({ all: 4, running: 1, pending: 1, rejected: 1 });
+  expect(executionCounts(list, { procedure: "p2" })).toEqual({
+    all: 2,
+    running: 0,
+    pending: 0,
+    rejected: 1,
+  });
+});
+
+const other = { id: "01970000-0000-7000-8000-0000000000a2", name: "実行 次郎" };
+const withOther = [
+  ...list,
+  e({ id: "others-run", executor: other }),
+  e({ id: "others-rejected", executor: other, status: "completed", approvalStatus: "rejected" }),
+];
+
+test("実行者で絞り込める", () => {
+  expect(ids(filterExecutions(withOther, { ...base, executor: other.id })).sort()).toEqual([
+    "others-rejected",
+    "others-run",
+  ]);
+});
+
+test("件数のカードに実行者の絞り込みが効く", () => {
+  expect(executionCounts(withOther, { executor: other.id })).toEqual({
+    all: 2,
+    running: 1,
+    pending: 0,
+    rejected: 1,
+  });
+  expect(executionCounts(withOther, { executor: user.id, procedure: "p2" })).toEqual({
+    all: 2,
+    running: 0,
+    pending: 0,
+    rejected: 1,
+  });
+});
+
+test("知らない実行者の id なら0件", () => {
+  expect(filterExecutions(withOther, { ...base, executor: "unknown" })).toEqual([]);
+  expect(executionCounts(withOther, { executor: "unknown" }).all).toBe(0);
 });
