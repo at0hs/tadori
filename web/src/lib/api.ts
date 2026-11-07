@@ -14,18 +14,22 @@ export class ApiError extends Error {
   readonly code: ErrorCode | "UNKNOWN";
   readonly status: number;
   readonly errors: FieldError[];
+  /** Problem Details の標準の項目と code・errors 以外（DRAFT_CONFLICT の保存者など、conventions.md 3.1）。 */
+  readonly extra: Record<string, unknown>;
 
   constructor(init: {
     code: ErrorCode | "UNKNOWN";
     status: number;
     message?: string;
     errors?: FieldError[];
+    extra?: Record<string, unknown>;
   }) {
     super(init.message ?? DEFAULT_MESSAGE);
     this.name = "ApiError";
     this.code = init.code;
     this.status = init.status;
     this.errors = init.errors ?? [];
+    this.extra = init.extra ?? {};
   }
 }
 
@@ -54,13 +58,23 @@ export async function toApiError(res: Response): Promise<ApiError> {
   if (typeof body !== "object" || body === null) {
     return new ApiError({ code: "UNKNOWN", status: res.status });
   }
-  const { code, detail, errors } = body as Record<string, unknown>;
+  const {
+    code,
+    detail,
+    errors,
+    type: _t,
+    title: _ti,
+    status: _s,
+    instance: _i,
+    ...extra
+  } = body as Record<string, unknown>;
   if (!isErrorCode(code)) return new ApiError({ code: "UNKNOWN", status: res.status });
   return new ApiError({
     code,
     status: res.status,
     message: typeof detail === "string" ? detail : undefined,
     errors: toFieldErrors(errors),
+    extra,
   });
 }
 

@@ -38,3 +38,19 @@ test("パスワード変更が必要のエラーでは me を取り直してか�
   expect(qc.getQueryState(["me"])?.isInvalidated).toBe(true);
   expect(actions).toEqual(["change-password"]);
 });
+
+test("meta.keepOnUnauthenticated の mutation は、未認証でもログインへ移さない（編集画面、screens.md 8章）", async () => {
+  const actions: string[] = [];
+  const qc = createQueryClient((a) => actions.push(a));
+  await qc
+    .getMutationCache()
+    .build(qc, {
+      mutationFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+      meta: { keepOnUnauthenticated: true },
+    })
+    .execute(undefined)
+    .catch(() => {});
+  expect(actions).toEqual([]);
+});

@@ -51,3 +51,26 @@ test("isApiError はコードでも絞れる", () => {
   expect(isApiError(e, "FORBIDDEN")).toBe(false);
   expect(isApiError(new Error("x"))).toBe(false);
 });
+
+test("標準の項目と code・errors 以外は extra に入れる（DRAFT_CONFLICT の保存者など）", async () => {
+  const e = await toApiError(
+    problem(
+      {
+        type: "about:blank",
+        title: "Conflict",
+        status: 409,
+        code: "DRAFT_CONFLICT",
+        detail: "他のユーザーが先に下書きを保存しました。",
+        reason: "draft_saved",
+        updatedBy: { id: "u1", name: "作成者 太郎" },
+        updatedAt: "2026-11-05T01:23:45.000Z",
+      },
+      409,
+    ),
+  );
+  expect(e.extra).toEqual({
+    reason: "draft_saved",
+    updatedBy: { id: "u1", name: "作成者 太郎" },
+    updatedAt: "2026-11-05T01:23:45.000Z",
+  });
+});
