@@ -1,10 +1,11 @@
 import type {
   ExecutionDetailResponse,
   ExecutionSummary,
+  HomeExecution,
   RunningExecution,
   StepRecord,
 } from "@tadori/shared";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
 import { db } from "../../db/client.ts";
 import {
   approvalEvents,
@@ -140,9 +141,17 @@ export async function getExecution(actor: Actor, id: string): Promise<ExecutionD
 
 /**
  * 実行の一覧（S-11）。全件を返し、絞り込み・並べ替えは画面で行う（conventions.md 5章）。
- * 進捗は手順のステップだけを数え、完了数には完了とスキップを数える（D-57）。
  */
 export async function listExecutions(): Promise<ExecutionSummary[]> {
+  const rows = await summarizeExecutions();
+  return rows.map(({ endedAt: _, ...summary }) => summary);
+}
+
+/**
+ * 実行の一覧の行を、条件に合う実行について作る（S-11、ホーム）。並びは決めない。
+ * 進捗は手順のステップだけを数え、完了数には完了とスキップを数える（D-57）。
+ */
+export async function summarizeExecutions(where?: SQL): Promise<HomeExecution[]> {
   const progress = db
     .select({
       executionId: executionSteps.executionId,
@@ -166,7 +175,8 @@ export async function listExecutions(): Promise<ExecutionSummary[]> {
     })
     .from(executions)
     .innerJoin(procedureVersions, eq(procedureVersions.id, executions.versionId))
-    .leftJoin(progress, eq(progress.executionId, executions.id));
+    .leftJoin(progress, eq(progress.executionId, executions.id))
+    .where(where);
   const name = await userNames(
     db,
     rows.map((r) => r.e.executorId),
@@ -180,6 +190,7 @@ export async function listExecutions(): Promise<ExecutionSummary[]> {
     approvalStatus: e.approvalStatus,
     progress: { done: done ?? 0, total: total ?? 0 },
     startedAt: iso(e.startedAt),
+    endedAt: e.endedAt ? iso(e.endedAt) : null,
     updatedAt: iso(e.updatedAt),
   }));
 }
