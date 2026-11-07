@@ -67,6 +67,27 @@ const PAIRS = [
   { label: [5, 6], value: [7, LAST_COL] },
 ] as const;
 
+/** Excel の1つのセルに入る文字数の上限。超えると Excel が修復を求め、内容が切れる。 */
+const CELL_MAX = 32767;
+
+/** 上限を超える値は切り、省略したことを末尾に書く（サロゲートペアの途中では切らない）。 */
+function fitCell(value: string): string {
+  if (value.length <= CELL_MAX) return value;
+  const note = (n: number) => `…（以下 ${n} 文字を省略。全文は Tadori の画面で確認してください）`;
+  let keep = CELL_MAX - note(value.length).length;
+  const last = value.charCodeAt(keep - 1);
+  if (last >= 0xd800 && last <= 0xdbff) keep--;
+  return value.slice(0, keep) + note(value.length - keep);
+}
+
+/** 表示の幅（全角を 2、半角を 1 と数える）。行の高さの見積もりに使う。 */
+const displayWidth = (line: string) =>
+  [...line].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) > 0xff ? 2 : 1), 0);
+
+/** 1行の高さ（pt。Meiryo UI 10pt）と、Excel の行の高さの上限。 */
+const LINE_HEIGHT = 14;
+const ROW_MAX = 409;
+
 const records = (list: StepRecord[]) =>
   list.map((r) => `[${formatJst(r.createdAt)} ${r.createdBy.name}] ${r.body}`);
 
@@ -97,7 +118,7 @@ export async function buildWorkbook(
   ) => {
     if (to > from) ws.mergeCells(row, from, row, to);
     const cell = ws.getCell(row, from);
-    cell.value = value;
+    cell.value = fitCell(value);
     cell.font = { name: FONT, size: style.size ?? 10, bold: style.bold ?? false };
     cell.alignment = { vertical: "top", wrapText: true };
     if (style.fill) cell.fill = LABEL_FILL;
@@ -157,6 +178,20 @@ export async function buildWorkbook(
       put(row, pair.label, entry[0], { bold: true, fill: true });
       put(row, pair.value, entry[1]);
     });
+    // 結合したセルの行は Excel が高さを自動で合わせないので、長い値が見えるよう見積もって決める
+    const lines = Math.max(
+      ...PAIRS.map((pair, i) => {
+        const value = pairs[i]?.[1] ?? "";
+        const width = COLUMNS.slice(pair.value[0] - 1, pair.value[1]).reduce(
+          (w, c) => w + c.width,
+          0,
+        );
+        return value
+          .split("\n")
+          .reduce((n, line) => n + Math.max(1, Math.ceil(displayWidth(line) / width)), 0);
+      }),
+    );
+    if (lines > 1) ws.getRow(row).height = Math.min(ROW_MAX, lines * LINE_HEIGHT + 4);
     row++;
   }
 

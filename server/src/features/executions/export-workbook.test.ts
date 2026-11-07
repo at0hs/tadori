@@ -266,6 +266,45 @@ describe("buildWorkbook", () => {
     expect(text(valueCell(ws, "中止の理由"))).toBe("作業時間を過ぎたため");
   });
 
+  it("結合したヘッダのセルは、長い値が見えるよう行の高さを決める", async () => {
+    const reason = "作業時間を過ぎたため中止した。".repeat(20); // 全角 300 文字
+    const ws = await sheetOf(
+      fixture({
+        status: "cancelled",
+        approvalStatus: null,
+        approvals: [],
+        cancelledBy: EXECUTOR,
+        cancelReason: reason,
+      }),
+    );
+    const cell = valueCell(ws, "中止の理由");
+    expect(text(cell)).toBe(reason);
+    // G:I の幅（89 文字分）に全角 300 文字（600 文字分）は 7 行
+    expect(ws.getRow(Number(cell.row)).height).toBeGreaterThanOrEqual(7 * 13);
+    // 短い値の行は高さを決めない（Excel の既定のまま）
+    expect(ws.getRow(Number(valueCell(ws, "版").row)).height ?? 0).toBeLessThanOrEqual(20);
+  });
+
+  it("1つのセルは Excel の上限 32767 文字を超えないよう、切って注記を付ける", async () => {
+    const base = fixture();
+    const [first, ...rest] = base.steps;
+    if (!first) throw new Error("ステップがない");
+    const big = (n: number) => ({
+      id: newId(),
+      body: `${n}`.repeat(20000),
+      createdBy: EXECUTOR,
+      createdAt: "2026-11-07T01:05:00.000Z",
+    });
+    const ws = await sheetOf({
+      ...base,
+      steps: [{ ...first, evidences: [big(1), big(2)] }, ...rest],
+    });
+    const value = text(detailRows(ws).at(0, "エビデンス"));
+    expect(value.length).toBeLessThanOrEqual(32767);
+    expect(value.startsWith("[2026-11-07 10:05 実行者A] 111")).toBe(true);
+    expect(value).toMatch(/…（以下 \d+ 文字を省略。全文は Tadori の画面で確認してください）$/);
+  });
+
   it("明細の見出しと並び", async () => {
     const ws = await sheetOf(fixture());
     const { headerRow, header, column } = detailRows(ws);
