@@ -19,9 +19,11 @@ export type OperationEvent =
   | "user.role_granted"
   | "user.role_revoked"
   | "user.password_reset"
-  | "user.recovered";
+  | "user.recovered"
+  | "procedure.published"
+  | "procedure.archived";
 
-export type OperationTarget = { type: "user"; id: string };
+export type OperationTarget = { type: "user" | "procedure"; id: string };
 
 export type OperationEntry = {
   event: OperationEvent;
