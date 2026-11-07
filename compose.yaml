@@ -1,0 +1,50 @@
+# 本番用の構成（operations.md 2章）。`.env` を書いて `docker compose up -d` で起動する。
+# 開発用の DB は compose.dev.yaml（pnpm db:up）。
+# `docker compose down -v` は DB のボリュームを消すので使わない（operations.md 11章）。
+
+# ログの大きさと世代の上限（operations.md 10章）。ディスクを使い切らないようにする。
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      APP_URL: ${APP_URL:?APP_URL を .env に書いてください}
+      DATABASE_URL: postgres://tadori:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env に書いてください}@db:5432/tadori
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET を .env に書いてください}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    logging: *logging
+
+  db:
+    # メジャーバージョンを固定する（D-53）。上げ方は operations.md 7章。
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tadori
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env に書いてください}
+      POSTGRES_DB: tadori
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tadori -d tadori"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+volumes:
+  db-data:
