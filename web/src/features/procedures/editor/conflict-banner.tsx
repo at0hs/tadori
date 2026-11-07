@@ -1,6 +1,7 @@
 import type { DraftConflict } from "@tadori/shared";
+import { Link } from "@tanstack/react-router";
 import { CircleAlert, ExternalLink, LogIn, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { formatShortDateTime } from "@/lib/format.ts";
 import type { ErrorRow } from "./form.ts";
 
@@ -68,6 +69,31 @@ export function ConflictBanner({
       <p className="mt-2 pl-6 text-xs text-muted-foreground">
         必要な変更は、新しいタブの最新の下書きに手で入れ直してください（差分は出しません）。
       </p>
+    </div>
+  );
+}
+
+/** 編集中に手順書が削除された（未公開の手順書の下書きを他の人が破棄した、D-29）。 */
+export function DeletedBanner() {
+  return (
+    <div
+      role="alert"
+      className="mt-4 animate-in rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm duration-200 fade-in-0"
+    >
+      <div className="flex items-start gap-2 text-destructive">
+        <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <div>
+          <p className="font-medium">保存できませんでした。この手順書は削除されています</p>
+          <p className="mt-0.5 text-foreground">
+            ほかの人が下書きを破棄したため、一度も公開していなかったこの手順書は削除されました。入力中の内容はこの画面に残っています。必要なら内容を控えてから、新しく作り直してください。
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 pl-6">
+        <Link to="/procedures" className={buttonVariants({ variant: "outline" })}>
+          手順書の一覧へ
+        </Link>
+      </div>
     </div>
   );
 }

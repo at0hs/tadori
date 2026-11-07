@@ -34,7 +34,12 @@ import {
   usePublish,
   useSaveDraft,
 } from "../queries.ts";
-import { ConflictBanner, ErrorListBanner, SessionBanner } from "./conflict-banner.tsx";
+import {
+  ConflictBanner,
+  DeletedBanner,
+  ErrorListBanner,
+  SessionBanner,
+} from "./conflict-banner.tsx";
 import { DiscardDialog, PublishDialog, UnsavedDialog } from "./editor-dialogs.tsx";
 import { EditorRail } from "./editor-rail.tsx";
 import { type ErrorRow, emptyContent, errorSummary, toFormPath } from "./form.ts";
@@ -54,6 +59,7 @@ type Banner =
   | { kind: "errors"; title: string; rows: ErrorRow[] }
   | { kind: "conflict"; conflict: DraftConflict }
   | { kind: "session" }
+  | { kind: "deleted" }
   | { kind: "error"; error: unknown };
 
 /** エラーの場所の要素へスクロールする。 */
@@ -131,7 +137,7 @@ export function ProcedureEditor({
     withResolver: true,
   });
 
-  const locked = banner?.kind === "conflict";
+  const locked = banner?.kind === "conflict" || banner?.kind === "deleted";
   const busy = isSubmitting || create.isPending || save.isPending || publish.isPending;
 
   // S-08 の公開に失敗して移ってきたときは、上の帯を見せる
@@ -167,6 +173,12 @@ export function ProcedureEditor({
     }
     if (isApiError(e, "UNAUTHENTICATED")) {
       setBanner({ kind: "session" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return true;
+    }
+    // 編集中に手順書が消えた（未公開の手順書の下書きを他の人が破棄した、D-29）
+    if (isApiError(e, "NOT_FOUND") && mode === "edit") {
+      setBanner({ kind: "deleted" });
       window.scrollTo({ top: 0, behavior: "smooth" });
       return true;
     }
@@ -274,7 +286,11 @@ export function ProcedureEditor({
       if (r.deleted === "procedure") await navigate({ to: "/procedures" });
       else await navigate({ to: "/procedures/$procedureId", params: { procedureId: id } });
     } catch (e) {
-      if (isApiError(e, "DRAFT_CONFLICT") || isApiError(e, "UNAUTHENTICATED")) {
+      if (
+        isApiError(e, "DRAFT_CONFLICT") ||
+        isApiError(e, "UNAUTHENTICATED") ||
+        isApiError(e, "NOT_FOUND")
+      ) {
         setDiscardOpen(false);
         handleError(e, form.getValues(), "保存");
       }
@@ -401,6 +417,7 @@ export function ProcedureEditor({
           />
         )}
         {banner?.kind === "session" && <SessionBanner />}
+        {banner?.kind === "deleted" && <DeletedBanner />}
         {banner?.kind === "error" && (
           <div className="mt-4">
             <ErrorBanner

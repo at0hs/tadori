@@ -256,6 +256,37 @@ test("D-55: 読み込んだ後に他の人が公開していたら、保存は�
   await author.goto(procedureUrl);
 });
 
+test("D-29: 編集中に他の人が未公開の手順書を破棄していたら、削除されたことを伝えて保存させない", async ({
+  browser,
+}) => {
+  await author.goto("/procedures/new");
+  await author.getByRole("textbox", { name: /^タイトル/ }).fill("消される手順書");
+  await author.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(author).toHaveURL(/\/edit$/);
+  const editUrl = new URL(author.url()).pathname;
+
+  const other = await pageAs(browser, AUTHOR_STATES[1]);
+  await other.goto(editUrl);
+  await other.getByRole("button", { name: "その他の操作" }).click();
+  await other.getByRole("menuitem", { name: "下書きを破棄" }).click();
+  await other.getByRole("button", { name: "手順書ごと削除" }).click();
+  await expect(other).toHaveURL("/procedures");
+  await other.context().close();
+
+  await author.getByLabel("概要", { exact: true }).fill("消された後の変更");
+  await author.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(
+    author.getByText("保存できませんでした。この手順書は削除されています"),
+  ).toBeVisible();
+  await expect(author.getByText("対象が見つかりません。")).toHaveCount(0);
+  await expect(author.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+  await expect(author.getByLabel("概要", { exact: true })).toHaveValue("消された後の変更");
+  await author.getByRole("link", { name: "手順書の一覧へ" }).click();
+  // 入力は捨てる前提なので、未保存の確認で移る
+  await author.getByRole("button", { name: "変更を捨てて移動" }).click();
+  await expect(author).toHaveURL("/procedures");
+});
+
 test("F-02 AC: 手順のステップが1つもない手順書は公開できない", async () => {
   await author.goto("/procedures/new");
   await author.getByRole("textbox", { name: /^タイトル/ }).fill("書きかけの手順書");
