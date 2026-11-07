@@ -183,6 +183,28 @@ test("F-08 AC: 承認済みの実行には追記できない", async () => {
   await expect(runner.getByRole("button", { name: "再依頼する" })).toHaveCount(0);
 });
 
+const XLSX_NAME = /^DNS レコードの更新_v1_\d{8}\.xlsx$/;
+
+test("F-09: 承認者は見出しの「⋯」から Excel に出力できる", async () => {
+  const { runner, checker } = pages;
+  await checker.goto(await finishedRun(runner));
+  await expect(checker.getByRole("button", { name: "承認する" })).toBeVisible();
+  await checker.getByRole("button", { name: "その他の操作" }).click();
+  const download = checker.waitForEvent("download");
+  await checker.getByRole("menuitem", { name: "Excel に出力" }).click();
+  expect((await download).suggestedFilename()).toMatch(XLSX_NAME);
+  await expect(checker.getByRole("alert")).toHaveCount(0);
+});
+
+test("F-09: 承認済みの実行は枠線のボタンで出力できる", async () => {
+  const { runner } = pages;
+  await runner.goto(approvedUrl);
+  const download = runner.waitForEvent("download");
+  await runner.getByRole("button", { name: "Excel に出力" }).click();
+  expect((await download).suggestedFilename()).toMatch(XLSX_NAME);
+  await expect(runner.getByRole("alert")).toHaveCount(0);
+});
+
 test("先に別の人が承認していたら帯で知らせる", async () => {
   const { runner, checker } = pages;
   const url = await finishedRun(runner);

@@ -32,5 +32,6 @@ export {
   SECRET_MASK,
   SECRET_MIN_LENGTH,
   splitVariables,
+  substituteText,
   type TextSegment,
 } from "./variables/substitute.ts";

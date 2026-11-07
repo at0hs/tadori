@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作まである。Excel 出力（F-09）・ホーム（S-03）はまだない（S-12 の Excel の操作もそのときに足す）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」まである。ホーム（S-03）はまだない。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -55,17 +55,17 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requireRole`）。
 - `server/src/features/users/`：管理者の API（`routes.ts`・`service.ts`）、初期管理者、復旧（`recover.ts`。入口は `server/src/cli/recover-admin.ts`）。
 - `server/src/features/procedures/`：手順書・版・下書きの API。読み込み（`read-service.ts`）と書き込み（`write-service.ts`。楽観ロックの照合は `checkLock`）、共有の読み出し（`queries.ts`）。
-- `server/src/features/executions/`：実行の API。開始（`start-service.ts`）、詳細と一覧（`read-service.ts`）、変数・ステップの状態・コメント・エビデンス（`record-service.ts`）、終了と中止（`end-service.ts`）、行のロック・本人の確認・変数の照合・管理者が中止できるかの判定（`queries.ts`）。
+- `server/src/features/executions/`：実行の API。開始（`start-service.ts`）、詳細と一覧（`read-service.ts`）、変数・ステップの状態・コメント・エビデンス（`record-service.ts`）、終了と中止（`end-service.ts`）、行のロック・本人の確認・変数の照合・管理者が中止できるかの判定（`queries.ts`）、Excel 出力（`export-service.ts`。ブックの組み立ては `export-workbook.ts` で、ExcelJS を使うのはここだけ（D-63）。ファイル名と日時は `export-format.ts`）。ExcelJS の依存の uuid は `pnpm-workspace.yaml` の `overrides` で上げている。
 - `server/src/features/approvals/`：承認・差し戻し・再依頼の API（`service.ts`・`routes.ts`）。`/api/executions` の下に載せ、実行の行のロックと本人の確認は `features/executions/queries.ts` を使う。
 - `server/src/db/`：テーブル定義（`schema/`）、接続（`client.ts`）、マイグレーション（`migrate.ts`）。生成した SQL は `server/drizzle/`。
 - `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、操作ログ（`operation-log.ts`）、本文とパスの検証（`validate.ts` の `jsonBody`・`pathParams`）、Hono の型とサービスに渡す `Operator`（`hono.ts`）。
-- `server/test/`：テストの環境変数・DB の準備・補助関数。手順書のダミーの文書と、DB に直接入れる補助は `procedures.ts`。
-- `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`。手順書の文書 `ProcedureContent` と公開時の検証 `findPublishErrors` は `procedures.ts`、実行の約束事と終了の判定 `finishOutcome`・進捗 `progressOf` は `executions.ts`）、`#{name}` の解析（`variables/parse.ts`）と置換・マスク（`variables/substitute.ts` の `splitVariables`・`maskSecrets`）、UUID v7 の ID（`ids.ts` の `newId`）。
+- `server/test/`：テストの環境変数・DB の準備・補助関数。手順書のダミーの文書と、DB に直接入れる補助は `procedures.ts`。出力した .xlsx の読み直しは `xlsx.ts` の `readXlsx`。
+- `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`。手順書の文書 `ProcedureContent` と公開時の検証 `findPublishErrors` は `procedures.ts`、実行の約束事と終了の判定 `finishOutcome`・進捗 `progressOf` は `executions.ts`）、`#{name}` の解析（`variables/parse.ts`）と置換・マスク（`variables/substitute.ts` の `splitVariables`・`maskSecrets`、サーバーの出力用の `substituteText`）、UUID v7 の ID（`ids.ts` の `newId`）。
 - `web/src/routes/`：TanStack Router のルート（ファイルの並びが URL）。`_app.tsx` がログインの確認（未ログインは `/login?redirect=…`、パスワード変更が必要なら `/account/password`）と共通の枠。`routeTree.gen.ts` は Vite のプラグインが作る生成物（コミットする。Biome の対象外）。
 - `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名（`roles.ts`）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
 - `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
 - `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
-- `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）。
+- `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）、Excel のダウンロードと「Excel に出力」の置き場所（`download.ts`）。
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
 

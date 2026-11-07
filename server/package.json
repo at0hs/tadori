@@ -17,6 +17,7 @@
     "@tadori/shared": "workspace:*",
     "better-auth": "1.7.17",
     "drizzle-orm": "1.0.0-rc.5",
+    "exceljs": "4.4.0",
     "hono": "^4.13.16",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
