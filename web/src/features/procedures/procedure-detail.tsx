@@ -9,6 +9,7 @@ import {
   History,
   ListChecks,
   Pencil,
+  Play,
   Tag,
 } from "lucide-react";
 import { useState } from "react";
@@ -127,6 +128,7 @@ export function ProcedureDetail({
 
   const version = data.latestVersion;
   const isAuthor = me.roles.includes("author");
+  const isExecutor = me.roles.includes("executor");
   const archived = data.status === "archived";
 
   return (
@@ -145,7 +147,16 @@ export function ProcedureDetail({
           }
         />
         <div className="flex items-center gap-2">
-          {/* 「実行を開始」は S-10 を作る F-05 で足す */}
+          {isExecutor && !archived && (
+            <Link
+              to="/procedures/$procedureId/start"
+              params={{ procedureId }}
+              className={buttonVariants()}
+            >
+              <Play aria-hidden />
+              実行を開始
+            </Link>
+          )}
           {isAuthor && !archived && (
             <Link
               to="/procedures/$procedureId/edit"
