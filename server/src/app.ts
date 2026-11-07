@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { authRoutes } from "./auth/routes.ts";
+import { executionRoutes } from "./features/executions/routes.ts";
 import { meRoutes } from "./features/me/routes.ts";
 import { procedureRoutes } from "./features/procedures/routes.ts";
 import { adminUserRoutes } from "./features/users/routes.ts";
@@ -26,7 +27,8 @@ export const app = new Hono<AppEnv>()
   // ここから下はパスワードの変更が済んでいることが必要
   .use(requirePasswordChanged)
   .route("/admin/users", adminUserRoutes)
-  .route("/procedures", procedureRoutes);
+  .route("/procedures", procedureRoutes)
+  .route("/executions", executionRoutes);
 
 app.notFound(() => problemResponse("NOT_FOUND"));
 
