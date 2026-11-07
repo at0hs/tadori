@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { DialogState } from "./execution-page.tsx";
 import { useCancelExecution, useChangeStepStatus, useFinishExecution } from "./queries.ts";
-import { maskInput, type RenderContext, renderPieces } from "./render.ts";
+import { maskReason, type RenderContext, renderPieces } from "./render.ts";
 import { SecretInput } from "./secret-input.tsx";
 import { setSecrets } from "./secret-store.ts";
 import { MaskNote, stepLabel } from "./step-card.tsx";
@@ -297,7 +297,7 @@ export function SkipDialog({
             stepId: step.stepId,
             from: step.status,
             to: "skipped",
-            skipReason: maskInput(reason.trim(), env.ctx.secrets),
+            skipReason: maskReason(reason, env.ctx.secrets),
           },
           {
             onSuccess: () => env.onResult(),
@@ -464,8 +464,9 @@ export function CancelDialog({
         const message = checkReason(reason, admin, "中止の理由");
         setError(message);
         if (message) return;
-        // 管理者は秘密変数の値を持たないのでマスクしない（実行者は送る前にマスクする。D-56）
-        const body = admin ? reason.trim() : maskInput(reason.trim(), env.ctx.secrets);
+        // 送る前にマスクする（D-56）。管理者として中止するときも、このタブに値があれば隠す
+        // （管理者が実行者を兼ねていて、実行者ロールを外された場合など）
+        const body = maskReason(reason, env.ctx.secrets);
         cancel.mutate(body, {
           onSuccess: () => env.onResult(),
           onError: (err) => env.onResult(err),

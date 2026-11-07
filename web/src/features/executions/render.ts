@@ -53,3 +53,11 @@ export function textForCopy(text: string, ctx: RenderContext): string | null {
 export function maskInput(text: string, secrets?: Readonly<Record<string, string>>): string {
   return maskSecrets(text, Object.values(secrets ?? {}));
 }
+
+/**
+ * 理由（スキップ・中止）を送る形にする。前後の空白を取る前にマスクする
+ * （先に取ると、末尾が空白の秘密変数の値が一致しなくなり、平文で残るため）。
+ */
+export function maskReason(text: string, secrets?: Readonly<Record<string, string>>): string {
+  return maskInput(text, secrets).trim();
+}

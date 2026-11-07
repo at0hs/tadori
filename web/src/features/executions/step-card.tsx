@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MarkdownText } from "@/features/procedures/procedure-document.tsx";
+import { copyText } from "@/lib/clipboard.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
 import { ExecText, SECRET_CLASS } from "./exec-text.tsx";
@@ -262,13 +263,19 @@ function StatusControl({
 
 function CommandBox({ command, env }: { command: string; env: StepCardEnv }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const hasSecret = renderPieces(command, env.ctx).some((p) => p.type === "secret");
-  const copyText = textForCopy(command, env.ctx);
+  const text = textForCopy(command, env.ctx);
   const copy = async () => {
-    if (copyText === null) return;
-    await navigator.clipboard.writeText(copyText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (text === null) return;
+    try {
+      await copyText(text);
+      setCopyFailed(false);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopyFailed(true);
+    }
   };
   return (
     <>
@@ -293,22 +300,20 @@ function CommandBox({ command, env }: { command: string; env: StepCardEnv }) {
             variant="ghost"
             size="icon-sm"
             className="bg-card/70"
-            disabled={copyText === null}
+            disabled={text === null}
             aria-label={
-              copyText === null
+              text === null
                 ? "秘密変数の値を入力するとコピーできます"
                 : copied
                   ? "コピーしました"
                   : "値を埋めた状態でコピー"
             }
             title={
-              copyText === null
-                ? "秘密変数の値を入力するとコピーできます"
-                : "値を埋めた状態でコピー"
+              text === null ? "秘密変数の値を入力するとコピーできます" : "値を埋めた状態でコピー"
             }
             onClick={() => void copy()}
           >
-            {copyText === null ? (
+            {text === null ? (
               <Lock aria-hidden />
             ) : copied ? (
               <Check className="text-success" aria-hidden />
@@ -318,7 +323,12 @@ function CommandBox({ command, env }: { command: string; env: StepCardEnv }) {
           </Button>
         </div>
       </div>
-      {copyText === null && env.self && (
+      {copyFailed && (
+        <p role="alert" className="mt-1 text-xs text-destructive">
+          コピーできませんでした。コマンドを選んでコピーしてください。
+        </p>
+      )}
+      {text === null && env.self && (
         <p className="mt-1 text-xs text-warning">秘密変数の値を入力するとコピーできます</p>
       )}
     </>

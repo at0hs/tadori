@@ -1,6 +1,6 @@
 import { SECRET_MASK } from "@tadori/shared";
 import { describe, expect, it } from "vitest";
-import { maskInput, renderPieces, textForCopy } from "./render.ts";
+import { maskInput, maskReason, renderPieces, textForCopy } from "./render.ts";
 
 const values = { host: "web01.example.test", port: "22" };
 const base = { values, secretNames: ["admin_password"], reveal: false };
@@ -64,5 +64,15 @@ describe("maskInput", () => {
 
   it("secrets がなければそのまま", () => {
     expect(maskInput("token Dummy-Pass-123", undefined)).toBe("token Dummy-Pass-123");
+  });
+});
+
+describe("maskReason", () => {
+  it("前後の空白を取る前にマスクする（値の末尾が空白でも隠れる）", () => {
+    expect(maskReason("理由 abcd ", { pw: "abcd " })).toBe(`理由 ${SECRET_MASK}`);
+  });
+
+  it("前後の空白を取る", () => {
+    expect(maskReason("  理由  ", undefined)).toBe("理由");
   });
 });
