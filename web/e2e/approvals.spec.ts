@@ -289,4 +289,3 @@ test("再依頼のコメントの秘密変数の値は、承認の履歴でマ�
   await expect(history.getByText("●●●●", { exact: true })).toHaveClass(/bg-warning/);
   await expect(history.getByText("Dummy-Token-9")).toHaveCount(0);
 });
-
