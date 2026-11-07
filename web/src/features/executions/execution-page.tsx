@@ -42,6 +42,7 @@ import { SectionTitle } from "@/features/procedures/editor/sections.tsx";
 import { isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
+import { ExecutionDialogs } from "./execution-dialogs.tsx";
 import { ApprovalsCard, ProgressCard, VariablesCard } from "./execution-rail.tsx";
 import {
   ApprovalBadge,
@@ -321,7 +322,11 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
           <ApprovalsCard approvals={detail.approvals} />
         </aside>
       </div>
-      {dialog !== null && null}
+      <ExecutionDialogs
+        dialog={dialog}
+        onClose={() => setDialog(null)}
+        env={{ detail, ctx, needSecrets, hasSecretVariables, onResult }}
+      />
     </>
   );
 }
