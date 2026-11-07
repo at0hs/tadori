@@ -102,7 +102,8 @@ test.beforeAll(async ({ browser }) => {
       summary: "",
       tags: [],
       prerequisites: "",
-      variables: [],
+      // 秘密変数は、再依頼のコメントのマスクを確かめるためだけに置く（どのステップも参照しない）
+      variables: [{ name: "token", description: "トークン", default: null, secret: true }],
       steps: [step(1, "レコードを書き換える"), step(2, "名前解決を確かめる")],
       rollbackSteps: [],
     },
@@ -194,4 +195,75 @@ test("先に別の人が承認していたら帯で知らせる", async () => {
   await expect(checker.getByRole("alert")).toBeVisible();
   await expect(checker.getByText("承認済み").first()).toBeVisible();
   await expect(checker.getByRole("button", { name: "承認する" })).toHaveCount(0);
+});
+
+const PROBLEM = "application/problem+json";
+
+test("差し戻しの送信に失敗しても、入力したコメントは残る", async () => {
+  const { runner, checker } = pages;
+  const url = await finishedRun(runner);
+  await checker.goto(url);
+  await checker.getByRole("button", { name: "差し戻す" }).click();
+  const dialog = checker.getByRole("alertdialog");
+  await dialog.getByLabel("コメント").fill("長いコメント：手順 2 の結果を貼ってください");
+
+  // サーバーのエラー：ダイアログを閉じず、中にエラーを出す
+  await checker.route("**/api/executions/*/reject", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: PROBLEM,
+      body: JSON.stringify({ status: 500, code: "INTERNAL", title: "エラー" }),
+    }),
+  );
+  await dialog.getByRole("button", { name: "差し戻す" }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByLabel("コメント")).toHaveValue(
+    "長いコメント：手順 2 の結果を貼ってください",
+  );
+
+  // セッション切れ：ログイン画面へ移らず、ダイアログに残す
+  await checker.unroute("**/api/executions/*/reject");
+  await checker.route("**/api/executions/*/reject", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: PROBLEM,
+      body: JSON.stringify({
+        status: 401,
+        code: "UNAUTHENTICATED",
+        title: "ログインしてください。",
+      }),
+    }),
+  );
+  await dialog.getByRole("button", { name: "差し戻す" }).click();
+  await expect(dialog.getByText("ログインの有効期限が切れました")).toBeVisible();
+  await expect(checker).toHaveURL(url);
+  await expect(dialog.getByLabel("コメント")).toHaveValue(
+    "長いコメント：手順 2 の結果を貼ってください",
+  );
+
+  // 直れば、そのまま送れる
+  await checker.unroute("**/api/executions/*/reject");
+  await dialog.getByRole("button", { name: "差し戻す" }).click();
+  await expect(band(checker).filter({ hasText: "差し戻しました" })).toBeVisible();
+});
+
+test("再依頼のコメントの秘密変数の値は、承認の履歴でマスクして強調する", async () => {
+  const { runner, checker } = pages;
+  const url = await finishedRun(runner);
+  expect(
+    (await post(checker, `/api${url}/reject`, { comment: "トークンを確かめてください" })).status(),
+  ).toBe(204);
+
+  await runner.goto(url);
+  await runner.getByRole("button", { name: "値を入力", exact: true }).click();
+  await runner.getByLabel("#{token}").fill("Dummy-Token-9");
+  await runner.getByRole("button", { name: "入力する" }).click();
+  await runner.getByRole("button", { name: "再依頼する" }).click();
+  await runner.getByRole("alertdialog").getByLabel("コメント").fill("token=Dummy-Token-9 で確認");
+  await runner.getByRole("alertdialog").getByRole("button", { name: "再依頼する" }).click();
+
+  const history = runner.getByRole("region", { name: "承認の履歴" });
+  await expect(history.getByText("token=●●●● で確認")).toBeVisible();
+  await expect(history.getByText("●●●●", { exact: true })).toHaveClass(/bg-warning/);
+  await expect(history.getByText("Dummy-Token-9")).toHaveCount(0);
 });

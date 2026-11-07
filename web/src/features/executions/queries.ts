@@ -121,6 +121,8 @@ export function useRejectExecution(id: string) {
     mutationFn: async (comment: string) => {
       await api.executions[":id"].reject.$post({ param: { id }, json: { comment } });
     },
+    // 書いたコメントを残すため、セッション切れでもログイン画面へ移さない（ダイアログに出す）
+    meta: { keepOnUnauthenticated: true },
     onSettled: invalidate,
   });
 }
@@ -131,6 +133,8 @@ export function useResubmitExecution(id: string) {
     mutationFn: async (comment: string) => {
       await api.executions[":id"].resubmit.$post({ param: { id }, json: { comment } });
     },
+    // 書いたコメントを残すため、セッション切れでもログイン画面へ移さない（ダイアログに出す）
+    meta: { keepOnUnauthenticated: true },
     onSettled: invalidate,
   });
 }

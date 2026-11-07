@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { useForm } from "react-hook-form";
+import { ErrorBanner } from "@/components/error-banner.tsx";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isApiError } from "@/lib/api.ts";
 import { cn } from "@/lib/utils";
 import type { DialogState } from "./execution-page.tsx";
 import { ExecutionStatusLabel } from "./execution-status.tsx";
@@ -187,6 +189,22 @@ function checkReason(
   if (required && t === "") return `${what}を入力してください。`;
   if (t.length > max) return `${what}は${max}文字以内にしてください。`;
   return undefined;
+}
+
+/**
+ * 差し戻し・再依頼の送信の失敗のうち、ダイアログを閉じて帯に出すもの（ほかの人の操作で状態が変わったなど、
+ * 送り直しても通らないもの）。それ以外（サーバーのエラー・通信の失敗・セッション切れ）は、書いたコメントを
+ * 残すためにダイアログを開いたまま中に出す。
+ */
+function closesDialog(err: unknown): boolean {
+  return (["STATE_CONFLICT", "FORBIDDEN", "NOT_FOUND"] as const).some((c) => isApiError(err, c));
+}
+
+function dialogErrorMessage(err: unknown): string | undefined {
+  if (isApiError(err, "UNAUTHENTICATED")) {
+    return "ログインの有効期限が切れました。コメントを控えてから別のタブでログインし直し、もう一度送ってください。";
+  }
+  return isApiError(err) ? err.message : undefined;
 }
 
 type Env = {
@@ -573,6 +591,7 @@ export function RejectDialog({ env, onClose }: { env: Env; onClose: () => void }
   const reject = useRejectExecution(env.detail.id);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string>();
+  const [failure, setFailure] = useState<unknown>();
   return (
     <Shell
       open
@@ -587,15 +606,25 @@ export function RejectDialog({ env, onClose }: { env: Env; onClose: () => void }
         const message = checkReason(comment, true, "コメント", 5000);
         setError(message);
         if (message) return;
+        setFailure(undefined);
         reject.mutate(comment.trim(), {
-          onSuccess: () => env.onResult(),
-          onError: (err) => env.onResult(err),
-          onSettled: onClose,
+          onSuccess: () => {
+            env.onResult();
+            onClose();
+          },
+          onError: (err) => {
+            if (!closesDialog(err)) return setFailure(err);
+            env.onResult(err);
+            onClose();
+          },
         });
       }}
       okLabel="差し戻す"
       okDestructive
     >
+      {failure !== undefined && (
+        <ErrorBanner error={failure} message={dialogErrorMessage(failure)} />
+      )}
       <ReasonField
         label="コメント"
         required
@@ -616,6 +645,7 @@ export function ResubmitDialog({ env, onClose }: { env: Env; onClose: () => void
   const resubmit = useResubmitExecution(env.detail.id);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string>();
+  const [failure, setFailure] = useState<unknown>();
   return (
     <Shell
       open
@@ -630,14 +660,24 @@ export function ResubmitDialog({ env, onClose }: { env: Env; onClose: () => void
         const message = checkReason(comment, true, "コメント", 5000);
         setError(message);
         if (message) return;
+        setFailure(undefined);
         resubmit.mutate(maskReason(comment, env.ctx.secrets), {
-          onSuccess: () => env.onResult(),
-          onError: (err) => env.onResult(err),
-          onSettled: onClose,
+          onSuccess: () => {
+            env.onResult();
+            onClose();
+          },
+          onError: (err) => {
+            if (!closesDialog(err)) return setFailure(err);
+            env.onResult(err);
+            onClose();
+          },
         });
       }}
       okLabel="再依頼する"
     >
+      {failure !== undefined && (
+        <ErrorBanner error={failure} message={dialogErrorMessage(failure)} />
+      )}
       <div>
         <ReasonField
           label="コメント"

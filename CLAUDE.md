@@ -98,7 +98,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - shadcn/ui は **Base UI** ベース。部品の組み合わせは `render` プロパティで書き、Radix の `asChild` は使わない。部品ごとの引数も Radix と違うことがあるので、`components/ui/` の実装を確認してから使う。
 - Enter キーで何かを実行する処理（送信、タグの追加、候補の確定など）では、日本語の変換中（`event.nativeEvent.isComposing`）なら何もしない。
 - **秘密変数の値**は `features/executions/secret-store.ts` の置き場だけに置き、API・Query のキャッシュ・Web Storage・URL に入れない。実行者が入力したテキストは送る前に `maskInput` を通す。表示は `ExecText`（値は薄いテーマ色、秘密変数は `●●●●`）、コピーは `textForCopy`（値が置き場になければ `null`）。
-- **実行の操作の mutation は成功・失敗のどちらでも `["executions"]` を取り直す**。`STEP_STATUS_CONFLICT`・`STATE_CONFLICT` のときに最新を見せるため。エラーは S-12 の見出しの下の帯に出す（ダイアログは閉じる）。`STEP_STATUS_CONFLICT` の今の状態は `currentStatus`（Problem Details の `status` とぶつかるため）。
+- **実行の操作の mutation は成功・失敗のどちらでも `["executions"]` を取り直す**。`STEP_STATUS_CONFLICT`・`STATE_CONFLICT` のときに最新を見せるため。エラーは S-12 の見出しの下の帯に出す（ダイアログは閉じる）。ただし差し戻し・再依頼のダイアログは、書いたコメントを残すため、`STATE_CONFLICT`・`FORBIDDEN`・`NOT_FOUND` 以外（サーバーのエラー・通信の失敗・セッション切れ）ではダイアログを開いたまま中にエラーを出す。`STEP_STATUS_CONFLICT` の今の状態は `currentStatus`（Problem Details の `status` とぶつかるため）。
 - **入力中のフォームの元になる Query は、取り直しで黙って作り直さない**。S-10 は開いた版に固定し、「最新版で開き直す」でだけ切り替える（ウィンドウのフォーカスで取り直すと入力が消えるため）。
 
 ## 崩してはいけない不変条件
