@@ -550,7 +550,7 @@ export function ApproveDialog({ env, onClose }: { env: Env; onClose: () => void 
       }}
       okLabel="承認する"
     >
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-muted px-4 py-3 text-sm">
+      <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 rounded-lg bg-muted px-4 py-3 text-sm">
         <dt className="text-muted-foreground">状態</dt>
         <dd>
           <ExecutionStatusLabel status={env.detail.status} />

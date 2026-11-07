@@ -13,7 +13,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）まである。承認（F-08）・Excel 出力（F-09）・ホーム（S-03）はまだない（S-12 の承認・Excel の操作もそのときに足す）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作まである。Excel 出力（F-09）・ホーム（S-03）はまだない（S-12 の Excel の操作もそのときに足す）。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -56,6 +56,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/src/features/users/`：管理者の API（`routes.ts`・`service.ts`）、初期管理者、復旧（`recover.ts`。入口は `server/src/cli/recover-admin.ts`）。
 - `server/src/features/procedures/`：手順書・版・下書きの API。読み込み（`read-service.ts`）と書き込み（`write-service.ts`。楽観ロックの照合は `checkLock`）、共有の読み出し（`queries.ts`）。
 - `server/src/features/executions/`：実行の API。開始（`start-service.ts`）、詳細と一覧（`read-service.ts`）、変数・ステップの状態・コメント・エビデンス（`record-service.ts`）、終了と中止（`end-service.ts`）、行のロック・本人の確認・変数の照合・管理者が中止できるかの判定（`queries.ts`）。
+- `server/src/features/approvals/`：承認・差し戻し・再依頼の API（`service.ts`・`routes.ts`）。`/api/executions` の下に載せ、実行の行のロックと本人の確認は `features/executions/queries.ts` を使う。
 - `server/src/db/`：テーブル定義（`schema/`）、接続（`client.ts`）、マイグレーション（`migrate.ts`）。生成した SQL は `server/drizzle/`。
 - `server/src/lib/`：`AppError` と Problem Details（`errors.ts`）、pino（`logger.ts`）、操作ログ（`operation-log.ts`）、本文とパスの検証（`validate.ts` の `jsonBody`・`pathParams`）、Hono の型とサービスに渡す `Operator`（`hono.ts`）。
 - `server/test/`：テストの環境変数・DB の準備・補助関数。手順書のダミーの文書と、DB に直接入れる補助は `procedures.ts`。
@@ -64,7 +65,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名（`roles.ts`）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
 - `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
 - `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
-- `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）。
+- `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）。
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。本番用の `compose.yaml` はまだない。
 
@@ -80,7 +81,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **ルートの検証**は `lib/validate.ts` の `jsonBody(schema)`・`pathParams(schema)` を使う（JSON でなければ 415、合わなければ 400 と欄ごとの `errors`。パスが合わなければ 404）。hono/validator を通すので、Hono RPC で画面に入力の型が伝わる。
 - **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。操作ログは `captureOperationLogs()`、D-33 の食い違いは `adminColumnMismatches()` で確かめる。
 - **テストの DB**：server のテストはテスト用 DB を1つ共有し、ファイルを並べて流さない。Better Auth はアプリのトランザクションに参加できないので、認証を使うテストは `resetDb()` でテーブルを空にして分ける（ロールバックによる分離は、サービスのテストを書くときに用意する）。
-- **E2E の注意**：`test.use({ storageState })` は `browser.newContext()` にも引き継がれる。別の人として操作するときは `e2e/helpers.ts` の `freshPage()` を使う。`e2e/` の tsconfig には DOM の型がないので、`page.evaluate` でブラウザの API を使うときは式を文字列で渡す（例：クリップボード）。`setupAuthor` の作成者（author1・author2）は `procedures.spec.ts` が作るので、ほかのファイルでは別のユーザー名で作る。入力欄は `getByLabel(…, { exact: true })` で探す（検索欄などと部分一致する）。ログインは IP ごとに 60 秒 20 回の制限があるので、管理者のログインは使い回す。
+- **E2E の注意**：`test.use({ storageState })` は `browser.newContext()` にも引き継がれる。別の人として操作するときは `e2e/helpers.ts` の `freshPage()` を使う。`e2e/` の tsconfig には DOM の型がないので、`page.evaluate` でブラウザの API を使うときは式を文字列で渡す（例：クリップボード）。`setupAuthor` の作成者（author1・author2）は `procedures.spec.ts` が作るので、ほかのファイルでは別のユーザー名で作る（`executions.spec.ts` は runner1、`approvals.spec.ts` は apprunner・checker1。`approvals.spec.ts` は管理者に承認者ロールを一時的に付けて外す）。Better Auth はパスワードの変更を IP ごとに 10 秒 3 回までにしているので、1つのファイルで新しいユーザーを作るのは2人までにする。入力欄は `getByLabel(…, { exact: true })` で探す（検索欄などと部分一致する）。ログインは IP ごとに 60 秒 20 回の制限があるので、管理者のログインは使い回す。
 - **pnpm は出てから24時間たっていない版を入れない**（`minimumReleaseAge`）。新しすぎる版を指定すると、pnpm が `pnpm-workspace.yaml` に `minimumReleaseAgeExclude` を自動で書き足すことがある。これはコミットせず、24時間待つか1つ前の版にする。
 
 ## 画面の実装ルール
