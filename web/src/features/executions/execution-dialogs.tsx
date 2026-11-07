@@ -2,9 +2,20 @@ import {
   type ExecutionDetailResponse,
   type ExecutionStep,
   finishOutcome,
+  progressOf,
   SECRET_MIN_LENGTH,
 } from "@tadori/shared";
-import { Ban, CircleAlert, Flag, KeyRound, type LucideIcon, SkipForward } from "lucide-react";
+import {
+  BadgeCheck,
+  Ban,
+  CircleAlert,
+  Flag,
+  KeyRound,
+  type LucideIcon,
+  Send,
+  SkipForward,
+  Undo2,
+} from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -19,7 +30,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { DialogState } from "./execution-page.tsx";
-import { useCancelExecution, useChangeStepStatus, useFinishExecution } from "./queries.ts";
+import { ExecutionStatusLabel } from "./execution-status.tsx";
+import {
+  useApproveExecution,
+  useCancelExecution,
+  useChangeStepStatus,
+  useFinishExecution,
+  useRejectExecution,
+  useResubmitExecution,
+} from "./queries.ts";
 import { maskReason, type RenderContext, renderPieces } from "./render.ts";
 import { SecretInput } from "./secret-input.tsx";
 import { setSecrets } from "./secret-store.ts";
@@ -157,11 +176,16 @@ function ReasonField({
   );
 }
 
-/** 理由の検証（スキップ・中止。api.md 6章の上限） */
-function checkReason(text: string, required: boolean, what: string): string | undefined {
+/** 理由・コメントの検証（スキップ・中止は 1000、差し戻し・再依頼は 5000。api.md 6章の上限） */
+function checkReason(
+  text: string,
+  required: boolean,
+  what: string,
+  max = 1000,
+): string | undefined {
   const t = text.trim();
   if (required && t === "") return `${what}を入力してください。`;
-  if (t.length > 1000) return `${what}は1000文字以内にしてください。`;
+  if (t.length > max) return `${what}は${max}文字以内にしてください。`;
   return undefined;
 }
 
@@ -201,6 +225,12 @@ export function ExecutionDialogs({
       return <FinishDialog env={env} onClose={onClose} />;
     case "cancel":
       return <CancelDialog env={env} mode={dialog.mode} onClose={onClose} />;
+    case "approve":
+      return <ApproveDialog env={env} onClose={onClose} />;
+    case "reject":
+      return <RejectDialog env={env} onClose={onClose} />;
+    case "resubmit":
+      return <ResubmitDialog env={env} onClose={onClose} />;
   }
 }
 
@@ -492,6 +522,135 @@ export function CancelDialog({
           hint={admin ? "実行の記録と操作ログに残ります" : undefined}
         />
         {!admin && <MaskNote env={env} />}
+      </div>
+    </Shell>
+  );
+}
+
+/** 承認の確認（ui.md 8.7）。承認すると誰も変更できなくなる */
+export function ApproveDialog({ env, onClose }: { env: Env; onClose: () => void }) {
+  const approve = useApproveExecution(env.detail.id);
+  const { done, total } = progressOf(env.detail.steps);
+  return (
+    <Shell
+      open
+      pending={approve.isPending}
+      onClose={onClose}
+      icon={BadgeCheck}
+      tone="success"
+      title="この実行を承認しますか？"
+      description="承認すると、この実行の記録は誰も変更できなくなります。"
+      onSubmit={(e) => {
+        e.preventDefault();
+        approve.mutate(undefined, {
+          onSuccess: () => env.onResult(),
+          onError: (err) => env.onResult(err),
+          onSettled: onClose,
+        });
+      }}
+      okLabel="承認する"
+    >
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-muted px-4 py-3 text-sm">
+        <dt className="text-muted-foreground">状態</dt>
+        <dd>
+          <ExecutionStatusLabel status={env.detail.status} />
+        </dd>
+        <dt className="text-muted-foreground">進捗</dt>
+        <dd>
+          <b>
+            {done} / {total}
+          </b>
+        </dd>
+        <dt className="text-muted-foreground">実行者</dt>
+        <dd>{env.detail.executor.name}</dd>
+      </dl>
+    </Shell>
+  );
+}
+
+/** 差し戻し（ui.md 8.7）。コメントは必須。承認者が書くのでマスクしない */
+export function RejectDialog({ env, onClose }: { env: Env; onClose: () => void }) {
+  const reject = useRejectExecution(env.detail.id);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string>();
+  return (
+    <Shell
+      open
+      pending={reject.isPending}
+      onClose={onClose}
+      icon={Undo2}
+      tone="destructive"
+      title="差し戻しますか？"
+      description="実行者はコメントとエビデンスを追記して、再依頼できます。ステップの状態は変えられません。"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const message = checkReason(comment, true, "コメント", 5000);
+        setError(message);
+        if (message) return;
+        reject.mutate(comment.trim(), {
+          onSuccess: () => env.onResult(),
+          onError: (err) => env.onResult(err),
+          onSettled: onClose,
+        });
+      }}
+      okLabel="差し戻す"
+      okDestructive
+    >
+      <ReasonField
+        label="コメント"
+        required
+        value={comment}
+        onChange={(v) => {
+          setComment(v);
+          setError(undefined);
+        }}
+        error={error}
+        placeholder="例：手順 2 のエビデンスに、設定を確かめた結果を貼ってください"
+      />
+    </Shell>
+  );
+}
+
+/** 再依頼（ui.md 8.7、D-31）。コメントは必須で、送る前にマスクする（D-56） */
+export function ResubmitDialog({ env, onClose }: { env: Env; onClose: () => void }) {
+  const resubmit = useResubmitExecution(env.detail.id);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string>();
+  return (
+    <Shell
+      open
+      pending={resubmit.isPending}
+      onClose={onClose}
+      icon={Send}
+      tone="primary"
+      title="再依頼しますか？"
+      description="承認待ちに戻り、承認か差し戻しが決まるまでコメントとエビデンスは追記できなくなります。"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const message = checkReason(comment, true, "コメント", 5000);
+        setError(message);
+        if (message) return;
+        resubmit.mutate(maskReason(comment, env.ctx.secrets), {
+          onSuccess: () => env.onResult(),
+          onError: (err) => env.onResult(err),
+          onSettled: onClose,
+        });
+      }}
+      okLabel="再依頼する"
+    >
+      <div>
+        <ReasonField
+          label="コメント"
+          required
+          value={comment}
+          onChange={(v) => {
+            setComment(v);
+            setError(undefined);
+          }}
+          error={error}
+          placeholder="例：手順 2 のエビデンスを追記しました"
+        />
+        <MaskNote env={env} />
       </div>
     </Shell>
   );

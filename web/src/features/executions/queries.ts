@@ -102,3 +102,35 @@ export function useCancelExecution(id: string) {
     onSettled: invalidate,
   });
 }
+
+// 承認（api.md 4.5、F-08）
+
+export function useApproveExecution(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async () => {
+      await api.executions[":id"].approve.$post({ param: { id } });
+    },
+    onSettled: invalidate,
+  });
+}
+
+export function useRejectExecution(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (comment: string) => {
+      await api.executions[":id"].reject.$post({ param: { id }, json: { comment } });
+    },
+    onSettled: invalidate,
+  });
+}
+
+export function useResubmitExecution(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (comment: string) => {
+      await api.executions[":id"].resubmit.$post({ param: { id }, json: { comment } });
+    },
+    onSettled: invalidate,
+  });
+}
