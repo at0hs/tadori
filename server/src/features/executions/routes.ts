@@ -1,8 +1,10 @@
 import {
+  cancelRequestSchema,
   commentRequestSchema,
   type ExecutionDetailResponse,
   evidenceRequestSchema,
   executionIdParamSchema,
+  type FinishExecutionResponse,
   type StartExecutionResponse,
   startExecutionRequestSchema,
   stepParamSchema,
@@ -13,6 +15,7 @@ import { Hono } from "hono";
 import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
 import { requireRole } from "../../middleware/role.ts";
+import { cancelExecution, finishExecution } from "./end-service.ts";
 import { getExecution } from "./read-service.ts";
 import { addComment, addEvidence, changeStepStatus, updateVariables } from "./record-service.ts";
 import { startExecution } from "./start-service.ts";
@@ -71,6 +74,23 @@ export const executionRoutes = new Hono<AppEnv>()
     async (c) => {
       const { id, stepId } = c.req.valid("param");
       await addEvidence(operatorOf(c), id, stepId, c.req.valid("json").body);
+      return c.body(null, 204);
+    },
+  )
+  .post("/:id/finish", requireRole("executor"), pathParams(executionIdParamSchema), async (c) => {
+    const body: FinishExecutionResponse = await finishExecution(
+      operatorOf(c),
+      c.req.valid("param").id,
+    );
+    return c.json(body);
+  })
+  .post(
+    "/:id/cancel",
+    requireRole("executor", "admin"),
+    pathParams(executionIdParamSchema),
+    jsonBody(cancelRequestSchema),
+    async (c) => {
+      await cancelExecution(operatorOf(c), c.req.valid("param").id, c.req.valid("json").reason);
       return c.body(null, 204);
     },
   );
