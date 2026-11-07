@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findVariableRefs } from "./parse.ts";
-import { maskSecrets, SECRET_MASK, splitVariables } from "./substitute.ts";
+import { maskSecrets, SECRET_MASK, splitVariables, substituteText } from "./substitute.ts";
 
 describe("splitVariables", () => {
   it("文字と変数の参照に分ける", () => {
@@ -77,5 +77,13 @@ describe("maskSecrets", () => {
 
   it("マスクの文字は ●●●●", () => {
     expect(SECRET_MASK).toBe("●●●●");
+  });
+});
+
+describe("substituteText", () => {
+  it("値を置き換え、秘密は ●●●●", () => {
+    expect(
+      substituteText("ssh #{host} #{pw} ##{host} #{nope}", { host: "web01.example.test" }, ["pw"]),
+    ).toBe("ssh web01.example.test ●●●● #{host} #{nope}");
   });
 });

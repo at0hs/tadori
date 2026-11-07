@@ -72,3 +72,21 @@ export function maskSecrets(text: string, values: readonly string[]): string {
   }
   return result + text.slice(pos, start) + SECRET_MASK + text.slice(end);
 }
+
+/**
+ * 版の文字列を置き換えた1つの文字列にする（サーバーの出力用。Excel など）。
+ * 秘密変数は常に `SECRET_MASK`、値のない変数は `#{name}` のまま。
+ */
+export function substituteText(
+  text: string,
+  values: Readonly<Record<string, string>>,
+  secretNames: readonly string[],
+): string {
+  return splitVariables(text)
+    .map((s) => {
+      if (s.type === "text") return s.text;
+      if (secretNames.includes(s.name)) return SECRET_MASK;
+      return values[s.name] ?? `#{${s.name}}`;
+    })
+    .join("");
+}
