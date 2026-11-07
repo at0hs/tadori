@@ -43,3 +43,31 @@ jobs:
           name: playwright-report
           path: web/playwright-report
           retention-days: 7
+
+  # 本番の構成（compose.yaml）を起動し、バックアップと復元の確認まで流す（operations.md）
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: ダミーの .env を書く
+        run: |
+          cat > .env <<'ENV'
+          APP_URL=http://localhost:3000
+          POSTGRES_PASSWORD=ci0123456789abcdef
+          BETTER_AUTH_SECRET=ci-secret-ci-secret-ci-secret-0123456789
+          INITIAL_ADMIN_USERNAME=admin
+          INITIAL_ADMIN_NAME=管理者
+          INITIAL_ADMIN_EMAIL=admin@example.test
+          INITIAL_ADMIN_PASSWORD=Initial-passw0rd-dummy
+          ENV
+      - run: docker compose up -d --build --wait
+      - run: curl -fsS http://localhost:3000/api/health
+      - name: 画面の URL を直接開くと index.html が返る
+        run: curl -fsS http://localhost:3000/executions/x | grep -q 'id="root"'
+      - name: バックアップのスクリプトのテスト
+        run: docker compose run --rm -T backup bash /opt/tadori/test/lib.test.sh
+      - run: docker compose exec -T backup tadori-backup
+      - name: 復元の確認（初期管理者の1人が戻る）
+        run: docker compose run --rm -T backup tadori-verify | tee verify.txt && grep -qx 'ユーザー：1' verify.txt
+      - if: failure()
+        run: docker compose logs
