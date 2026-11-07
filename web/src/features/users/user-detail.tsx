@@ -19,14 +19,15 @@ import { BanUserDialog } from "./ban-user-dialog.tsx";
 import { userQueryOptions } from "./queries.ts";
 import { ResetPasswordDialog } from "./reset-password-dialog.tsx";
 import { RoleSwitches } from "./role-switches.tsx";
+import { RunningExecutions } from "./running-executions.tsx";
 import { UserAvatar, UserStatus } from "./user-status.tsx";
 
 const BREADCRUMB_ROOT = { label: "ユーザー", to: "/admin/users" };
 
-// S-15 の中身（ui.md 6章）。「実行中の実行」の区画は F-05 で足す。
+// S-15 の中身（ui.md 6章）。実行中の実行は、無効化・ロールを外す前の案内にも使う（D-36）。
 export function UserDetail({ userId }: { userId: string }) {
   const { data: me } = useSuspenseQuery(meQueryOptions);
-  const { data: user, error, isPending } = useQuery(userQueryOptions(userId));
+  const { data, error, isPending } = useQuery(userQueryOptions(userId));
   const [dialog, setDialog] = useState<"ban" | "reset" | null>(null);
   const [notice, setNotice] = useState<string>();
 
@@ -53,6 +54,7 @@ export function UserDetail({ userId }: { userId: string }) {
     );
   }
 
+  const { user, runningExecutions } = data;
   const isSelf = user.id === me.id;
   return (
     <>
@@ -103,8 +105,9 @@ export function UserDetail({ userId }: { userId: string }) {
           {notice}
         </div>
       )}
-      <div className="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
-        <RoleSwitches user={user} isSelf={isSelf} />
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
+        <RoleSwitches user={user} isSelf={isSelf} runningCount={runningExecutions.length} />
+        <RunningExecutions executions={runningExecutions} />
       </div>
       {!isSelf && (
         <>
@@ -116,6 +119,7 @@ export function UserDetail({ userId }: { userId: string }) {
           />
           <BanUserDialog
             user={user}
+            runningCount={runningExecutions.length}
             open={dialog === "ban"}
             onOpenChange={(open) => setDialog(open ? "ban" : null)}
           />

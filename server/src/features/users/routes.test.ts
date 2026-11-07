@@ -1,6 +1,7 @@
 import { ROLES, type Role } from "@tadori/shared";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { publishedProcedure, startRun } from "../../../test/executions.ts";
 import {
   adminColumnMismatches,
   captureOperationLogs,
@@ -154,6 +155,35 @@ describe("ユーザーの一覧・詳細（S-13、S-15）", () => {
       expect(r.status).toBe(404);
       expect((await readJson(r)).code).toBe("NOT_FOUND");
     }
+  });
+  it("S-15: ユーザーの詳細に、そのユーザーの実行中の実行が出る", async () => {
+    const admin = await adminSession();
+    const authorId = await createUser({ username: "author01", roles: ["author"] });
+    const execId = await createUser({ username: "exec01", roles: ["executor"] });
+    await createUser({ username: "exec02", roles: ["executor"] });
+    const procedureId = await publishedProcedure(authorId);
+    const mine = await login("exec01");
+    const running = await startRun(mine, procedureId);
+    const ended = await startRun(mine, procedureId);
+    await request(`/api/executions/${ended}/cancel`, { cookie: mine, json: { reason: "" } });
+    await startRun(await login("exec02"), procedureId);
+
+    const res = await request(`/api/admin/users/${execId}`, { cookie: admin.cookie });
+    const body = await readJson(res);
+    expect(body.runningExecutions).toEqual([
+      {
+        id: running,
+        procedure: { id: procedureId, title: "nginx の設定変更" },
+        versionNo: 1,
+        startedAt: expect.any(String),
+        updatedAt: expect.any(String),
+      },
+    ]);
+
+    const none = await readJson(
+      await request(`/api/admin/users/${authorId}`, { cookie: admin.cookie }),
+    );
+    expect(none.runningExecutions).toEqual([]);
   });
 });
 

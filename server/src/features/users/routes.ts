@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
 import { requireRole } from "../../middleware/role.ts";
+import { runningExecutionsOf } from "../executions/read-service.ts";
 import {
   banUser,
   createUser,
@@ -33,7 +34,11 @@ export const adminUserRoutes = new Hono<AppEnv>()
     return c.json(body, 201);
   })
   .get("/:id", pathParams(userIdParamSchema), async (c) => {
-    const body: AdminUserDetailResponse = { user: await getUser(c.req.valid("param").id) };
+    const { id } = c.req.valid("param");
+    const body: AdminUserDetailResponse = {
+      user: await getUser(id),
+      runningExecutions: await runningExecutionsOf(id),
+    };
     return c.json(body);
   })
   .put("/:id/roles/:role", pathParams(userRoleParamSchema), async (c) => {

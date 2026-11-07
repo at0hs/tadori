@@ -21,9 +21,12 @@ export type OperationEvent =
   | "user.password_reset"
   | "user.recovered"
   | "procedure.published"
-  | "procedure.archived";
+  | "procedure.archived"
+  | "execution.started"
+  | "execution.finished"
+  | "execution.cancelled";
 
-export type OperationTarget = { type: "user" | "procedure"; id: string };
+export type OperationTarget = { type: "user" | "procedure" | "execution"; id: string };
 
 export type OperationEntry = {
   event: OperationEvent;

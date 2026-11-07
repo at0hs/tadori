@@ -20,10 +20,10 @@ test.describe("ログインしていない", () => {
   });
 
   test("ログイン前に開こうとした画面に、ログイン後に戻る", async ({ page }) => {
-    await page.goto("/executions?status=running");
+    await page.goto("/executions?card=running");
     await expect(page).toHaveURL(/\/login\?redirect=/);
     await login(page, "admin", ADMIN_PASSWORD);
-    await expect(page).toHaveURL("/executions?status=running");
+    await expect(page).toHaveURL("/executions?card=running");
   });
 
   test("redirect に外のサイトを入れても / に行く", async ({ page }) => {

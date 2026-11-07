@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ErrorScreen } from "@/components/error-screen.tsx";
+import { clearSecrets } from "@/features/executions/secret-store.ts";
 import { createQueryClient } from "@/lib/query.ts";
 import { routeTree } from "./routeTree.gen.ts";
 import "./index.css";
@@ -12,6 +13,7 @@ const queryClient = createQueryClient((action) => {
   if (action === "login") {
     // ログイン画面そのものでの未ログインは、ここでは扱わない（ログイン画面が自分で確かめる）
     if (window.location.pathname === "/login") return;
+    clearSecrets();
     queryClient.clear();
     void router.navigate({
       to: "/login",

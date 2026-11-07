@@ -15,7 +15,7 @@ export const usersQueryOptions = queryOptions({
 export const userQueryOptions = (id: string) =>
   queryOptions({
     queryKey: [...usersKey, id],
-    queryFn: async () => (await (await api.admin.users[":id"].$get({ param: { id } })).json()).user,
+    queryFn: async () => (await api.admin.users[":id"].$get({ param: { id } })).json(),
   });
 
 function useInvalidate() {
