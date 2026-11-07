@@ -334,7 +334,7 @@ function ListFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProgressBar({ execution: e }: { execution: ExecutionSummary }) {
+export function ProgressBar({ execution: e }: { execution: ExecutionSummary }) {
   const { done, total } = e.progress;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const color =

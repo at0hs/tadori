@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_app/executions/")({
     status: z.array(z.enum(EXECUTION_STATUSES)).default([]).catch([]),
     approval: z.enum(APPROVAL_STATUSES).optional().catch(undefined),
     procedure: z.string().optional().catch(undefined),
+    executor: z.string().optional().catch(undefined),
     sort: z.enum(EXECUTION_SORTS).default(DEFAULTS.sort).catch(DEFAULTS.sort),
   }),
   search: { middlewares: [stripSearchParams(DEFAULTS)] },

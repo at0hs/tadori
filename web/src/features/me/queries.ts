@@ -12,3 +12,11 @@ export const meQueryOptions = queryOptions({
 export function useMe() {
   return useSuspenseQuery(meQueryOptions).data;
 }
+
+// ホーム（GET /api/me/home）。S-12 などで状態を変えてから戻ったときに古い区画を出さないよう、
+// 開くたびに取り直す。
+export const homeQueryOptions = queryOptions({
+  queryKey: ["me", "home"],
+  queryFn: async () => (await api.me.home.$get()).json(),
+  staleTime: 0,
+});
