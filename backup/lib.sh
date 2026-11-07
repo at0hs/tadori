@@ -1,0 +1,110 @@
+# バックアップのスクリプトが共通で使う関数（operations.md 5〜6章）。bin/ の各コマンドが source する。
+# 時刻は TZ（compose で Asia/Tokyo）に従う。接続先は PGHOST・PGUSER・PGDATABASE・PGPASSWORD。
+
+BACKUP_ROOT=${BACKUP_ROOT:-/backups}
+
+log() { echo "$(date '+%F %T') $*"; }
+err() { echo "$(date '+%F %T') $*" >&2; }
+
+# BACKUP_TIMES（例："03:00,15:00"）を検証し、並べて重複を除いて1行ずつ出す。
+parse_times() {
+  local raw="${1//[[:space:]]/}" item
+  local -a items
+  if [[ -z "$raw" || "$raw" == ,* || "$raw" == *, || "$raw" == *,,* ]]; then
+    err "BACKUP_TIMES「$1」が正しくありません。HH:MM をカンマで区切って書いてください（例：03:00,15:00）"
+    return 1
+  fi
+  IFS=',' read -r -a items <<<"$raw"
+  for item in "${items[@]}"; do
+    if [[ ! "$item" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+      err "BACKUP_TIMES の「$item」は HH:MM（00:00〜23:59、2桁）ではありません"
+      return 1
+    fi
+  done
+  printf '%s\n' "${items[@]}" | sort -u
+}
+
+# BACKUP_KEEP が1以上の整数か
+validate_keep() {
+  if [[ ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+    err "BACKUP_KEEP「$1」が正しくありません。1以上の整数を書いてください"
+    return 1
+  fi
+}
+
+# now_epoch から、次の実行（並べ済みの時刻のうち now より後の最初のもの。なければ翌日の最初）までの秒。
+# ちょうど同じ時刻は「後」に含めない（同じ時刻に2回取らない）。
+seconds_until_next() {
+  local now="$1" today tomorrow t at
+  shift
+  today=$(date -d "@$now" +%F)
+  for t in "$@"; do
+    at=$(date -d "$today $t" +%s)
+    if ((at > now)); then
+      echo $((at - now))
+      return
+    fi
+  done
+  tomorrow=$(date -d "$today + 1 day" +%F)
+  at=$(date -d "$tomorrow $1" +%s)
+  echo $((at - now))
+}
+
+# dir にダンプを取り、そのパスを出す。書きかけは一時的な名前にし、成功してから本来の名前に変える。
+dump_to() {
+  local dir="$1" name tmp
+  mkdir -p "$dir"
+  name="tadori-$(date +%Y%m%d-%H%M%S).dump"
+  # 同じ秒に2回取ったときに上書きしない
+  while [[ -e "$dir/$name" ]]; do
+    sleep 1
+    name="tadori-$(date +%Y%m%d-%H%M%S).dump"
+  done
+  tmp="$dir/.$name.tmp"
+  if pg_dump -Fc -f "$tmp"; then
+    mv "$tmp" "$dir/$name"
+    echo "$dir/$name"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+# dir のダンプのうち新しい keep 個を残し、古いものを消す。書きかけ（.tmp）は数えない。
+rotate() {
+  local dir="$1" keep="$2" i
+  local -a files
+  mapfile -t files < <(find "$dir" -maxdepth 1 -type f -name 'tadori-*.dump' -printf '%f\n' | sort)
+  for ((i = 0; i < ${#files[@]} - keep; i++)); do
+    rm -f -- "${dir:?}/${files[i]}"
+    log "古いバックアップを消した：${files[i]}"
+  done
+}
+
+# コマンドに渡されたダンプの指定をパスにする。空なら一番新しいもの。
+# 「manual/tadori-….dump」のようにバックアップの置き場からの相対でも指定できる。
+resolve_dump() {
+  local given="$1"
+  if [[ -z "$given" ]]; then
+    latest_dump "$BACKUP_ROOT"
+  elif [[ -f "$given" ]]; then
+    echo "$given"
+  elif [[ -f "$BACKUP_ROOT/$given" ]]; then
+    echo "$BACKUP_ROOT/$given"
+  else
+    err "ダンプ「$given」がありません"
+    return 1
+  fi
+}
+
+# root の auto/ と manual/ のダンプのうち、名前の日時が一番新しいもののパス
+latest_dump() {
+  local root="$1" latest
+  latest=$(find "$root/auto" "$root/manual" -maxdepth 1 -type f -name 'tadori-*.dump' -printf '%f\t%p\n' 2>/dev/null |
+    sort | tail -n 1 | cut -f 2)
+  if [[ -z "$latest" ]]; then
+    err "$root にバックアップがありません"
+    return 1
+  fi
+  echo "$latest"
+}

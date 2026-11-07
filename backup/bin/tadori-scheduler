@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# backup コンテナの既定の動き（D-19）。BACKUP_TIMES の時刻ごとに backups/auto/ へダンプを取り、
+# BACKUP_KEEP を超えた古いものを消す。設定が誤っていれば理由を出して止まる。
+set -euo pipefail
+# shellcheck source=../lib.sh
+source /opt/tadori/lib.sh
+umask 077
+trap 'log "止める"; exit 0' TERM INT
+
+times_text=$(parse_times "${BACKUP_TIMES:-03:00}")
+mapfile -t times <<<"$times_text"
+keep="${BACKUP_KEEP:-7}"
+validate_keep "$keep"
+
+log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
+while true; do
+  now=$(date +%s)
+  wait_seconds=$(seconds_until_next "$now" "${times[@]}")
+  log "次のバックアップ：$(date -d "@$((now + wait_seconds))" '+%F %T')"
+  # sleep を裏で動かして wait する（TERM をすぐ受け取るため）
+  sleep "$wait_seconds" &
+  wait $!
+  if path=$(dump_to "$BACKUP_ROOT/auto"); then
+    log "バックアップを取った：$path"
+    rotate "$BACKUP_ROOT/auto" "$keep"
+  else
+    err "バックアップに失敗した（古いバックアップは消していない）"
+  fi
+done

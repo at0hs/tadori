@@ -1,0 +1,3 @@
+# コンテナの中で動くスクリプトは LF でないと動かない
+*.sh text eol=lf
+backup/bin/* text eol=lf

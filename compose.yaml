@@ -46,5 +46,22 @@ services:
       retries: 30
     logging: *logging
 
+  # 決まった時刻に pg_dump を取る（D-19、operations.md 5〜6章）。
+  # その場で取る・復元の確認・復元のコマンドもこのイメージに入っている。
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env に書いてください}
+      BACKUP_TIMES: ${BACKUP_TIMES:-03:00}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+    volumes:
+      # DB のボリュームとは別の、ホストのディレクトリに置く
+      - ./backups:/backups
+    logging: *logging
+
 volumes:
   db-data:
