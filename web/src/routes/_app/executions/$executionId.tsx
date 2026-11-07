@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ListChecks } from "lucide-react";
-import { EmptyState } from "@/components/empty-state.tsx";
+import { ExecutionPage } from "@/features/executions/execution-page.tsx";
 
-// S-12。Task 9 で実行の画面に置き換える。
+// S-12
 export const Route = createFileRoute("/_app/executions/$executionId")({
-  component: () => (
-    <div className="rounded-xl border bg-card">
-      <EmptyState icon={ListChecks} title="この画面はまだありません" />
-    </div>
-  ),
+  component: ExecutionRoute,
 });
+
+function ExecutionRoute() {
+  const { executionId } = Route.useParams();
+  return <ExecutionPage key={executionId} executionId={executionId} />;
+}
