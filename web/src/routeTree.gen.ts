@@ -22,6 +22,8 @@ import { Route as AppAdminUsersUserIdRouteImport } from './routes/_app/admin/use
 import { Route as AppAdminUsersNewRouteImport } from './routes/_app/admin/users/new'
 import { Route as AppProceduresProcedureIdIndexRouteImport } from './routes/_app/procedures/$procedureId/index'
 import { Route as AppProceduresProcedureIdEditRouteImport } from './routes/_app/procedures/$procedureId/edit'
+import { Route as AppProceduresProcedureIdVersionsIndexRouteImport } from './routes/_app/procedures/$procedureId/versions/index'
+import { Route as AppProceduresProcedureIdVersionsVersionNoRouteImport } from './routes/_app/procedures/$procedureId/versions/$versionNo'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -89,6 +91,18 @@ const AppProceduresProcedureIdEditRoute =
     path: '/procedures/$procedureId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const AppProceduresProcedureIdVersionsIndexRoute =
+  AppProceduresProcedureIdVersionsIndexRouteImport.update({
+    id: '/procedures/$procedureId/versions/',
+    path: '/procedures/$procedureId/versions/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppProceduresProcedureIdVersionsVersionNoRoute =
+  AppProceduresProcedureIdVersionsVersionNoRouteImport.update({
+    id: '/procedures/$procedureId/versions/$versionNo',
+    path: '/procedures/$procedureId/versions/$versionNo',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -103,6 +117,8 @@ export interface FileRoutesByFullPath {
   '/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/admin/users/': typeof AppAdminUsersIndexRoute
   '/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -117,6 +133,8 @@ export interface FileRoutesByTo {
   '/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/admin/users': typeof AppAdminUsersIndexRoute
   '/procedures/$procedureId': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/procedures/$procedureId/versions': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +151,8 @@ export interface FileRoutesById {
   '/_app/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/_app/admin/users/': typeof AppAdminUsersIndexRoute
   '/_app/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/_app/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/_app/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,6 +169,8 @@ export interface FileRouteTypes {
     | '/procedures/$procedureId/edit'
     | '/admin/users/'
     | '/procedures/$procedureId/'
+    | '/procedures/$procedureId/versions/$versionNo'
+    | '/procedures/$procedureId/versions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -163,6 +185,8 @@ export interface FileRouteTypes {
     | '/procedures/$procedureId/edit'
     | '/admin/users'
     | '/procedures/$procedureId'
+    | '/procedures/$procedureId/versions/$versionNo'
+    | '/procedures/$procedureId/versions'
   id:
     | '__root__'
     | '/_app'
@@ -178,6 +202,8 @@ export interface FileRouteTypes {
     | '/_app/procedures/$procedureId/edit'
     | '/_app/admin/users/'
     | '/_app/procedures/$procedureId/'
+    | '/_app/procedures/$procedureId/versions/$versionNo'
+    | '/_app/procedures/$procedureId/versions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -278,6 +304,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProceduresProcedureIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/procedures/$procedureId/versions/': {
+      id: '/_app/procedures/$procedureId/versions/'
+      path: '/procedures/$procedureId/versions'
+      fullPath: '/procedures/$procedureId/versions/'
+      preLoaderRoute: typeof AppProceduresProcedureIdVersionsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/procedures/$procedureId/versions/$versionNo': {
+      id: '/_app/procedures/$procedureId/versions/$versionNo'
+      path: '/procedures/$procedureId/versions/$versionNo'
+      fullPath: '/procedures/$procedureId/versions/$versionNo'
+      preLoaderRoute: typeof AppProceduresProcedureIdVersionsVersionNoRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -306,6 +346,8 @@ interface AppRouteChildren {
   AppProceduresIndexRoute: typeof AppProceduresIndexRoute
   AppProceduresProcedureIdEditRoute: typeof AppProceduresProcedureIdEditRoute
   AppProceduresProcedureIdIndexRoute: typeof AppProceduresProcedureIdIndexRoute
+  AppProceduresProcedureIdVersionsVersionNoRoute: typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  AppProceduresProcedureIdVersionsIndexRoute: typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -317,6 +359,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppProceduresIndexRoute: AppProceduresIndexRoute,
   AppProceduresProcedureIdEditRoute: AppProceduresProcedureIdEditRoute,
   AppProceduresProcedureIdIndexRoute: AppProceduresProcedureIdIndexRoute,
+  AppProceduresProcedureIdVersionsVersionNoRoute:
+    AppProceduresProcedureIdVersionsVersionNoRoute,
+  AppProceduresProcedureIdVersionsIndexRoute:
+    AppProceduresProcedureIdVersionsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
