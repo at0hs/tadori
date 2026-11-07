@@ -17,7 +17,7 @@ export const PASSWORD = "Passw0rd-dummy-01";
  */
 export async function resetDb() {
   await db.execute(
-    sql`truncate table "user", session, account, verification, user_roles, procedures, procedure_versions, procedure_drafts cascade`,
+    sql`truncate table "user", session, account, verification, user_roles, procedures, procedure_versions, procedure_drafts, executions, execution_variables, execution_steps, step_status_events, step_comments, step_evidences, approval_events cascade`,
   );
 }
 

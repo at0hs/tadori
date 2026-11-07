@@ -1,0 +1,2174 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c7263b3f-2745-4c0f-ade5-355c4470ba67",
+  "prevIds": [
+    "6a8cdd7a-e7c4-468f-9d67-11e1563ce867"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "approval_events"
+      ],
+      "writes": [
+        "s|tbl|public.approval_events",
+        "n|tbl|public.approval_events",
+        "e|tbl|public.approval_events",
+        "n|rel|public.approval_events",
+        "n|type|public.approval_events",
+        "n|rel|public.approval_events_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "execution_steps"
+      ],
+      "writes": [
+        "s|tbl|public.execution_steps",
+        "n|tbl|public.execution_steps",
+        "e|tbl|public.execution_steps",
+        "n|rel|public.execution_steps",
+        "n|type|public.execution_steps",
+        "n|rel|public.execution_steps_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "execution_variables"
+      ],
+      "writes": [
+        "s|tbl|public.execution_variables",
+        "n|tbl|public.execution_variables",
+        "e|tbl|public.execution_variables",
+        "n|rel|public.execution_variables",
+        "n|type|public.execution_variables",
+        "n|rel|public.execution_variables_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|tbl|public.executions",
+        "n|tbl|public.executions",
+        "e|tbl|public.executions",
+        "n|rel|public.executions",
+        "n|type|public.executions",
+        "n|rel|public.executions_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_comments"
+      ],
+      "writes": [
+        "s|tbl|public.step_comments",
+        "n|tbl|public.step_comments",
+        "e|tbl|public.step_comments",
+        "n|rel|public.step_comments",
+        "n|type|public.step_comments",
+        "n|rel|public.step_comments_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_evidences"
+      ],
+      "writes": [
+        "s|tbl|public.step_evidences",
+        "n|tbl|public.step_evidences",
+        "e|tbl|public.step_evidences",
+        "n|rel|public.step_evidences",
+        "n|type|public.step_evidences",
+        "n|rel|public.step_evidences_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_status_events"
+      ],
+      "writes": [
+        "s|tbl|public.step_status_events",
+        "n|tbl|public.step_status_events",
+        "e|tbl|public.step_status_events",
+        "n|rel|public.step_status_events",
+        "n|type|public.step_status_events",
+        "n|rel|public.step_status_events_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "approval_events",
+        "approval_events_execution_id_index"
+      ],
+      "writes": [
+        "s|idx|public.approval_events_execution_id_index",
+        "n|idx|public.approval_events_execution_id_index",
+        "e|idx|public.approval_events_execution_id_index",
+        "n|rel|public.approval_events_execution_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.approval_events",
+        "n|sch|public",
+        "n|col|public.approval_events.execution_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "executions",
+        "executions_executor_id_status_index"
+      ],
+      "writes": [
+        "s|idx|public.executions_executor_id_status_index",
+        "n|idx|public.executions_executor_id_status_index",
+        "e|idx|public.executions_executor_id_status_index",
+        "n|rel|public.executions_executor_id_status_index"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|col|public.executions.executor_id",
+        "n|col|public.executions.status"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "executions",
+        "executions_procedure_id_index"
+      ],
+      "writes": [
+        "s|idx|public.executions_procedure_id_index",
+        "n|idx|public.executions_procedure_id_index",
+        "e|idx|public.executions_procedure_id_index",
+        "n|rel|public.executions_procedure_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|col|public.executions.procedure_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "step_comments",
+        "step_comments_execution_id_index"
+      ],
+      "writes": [
+        "s|idx|public.step_comments_execution_id_index",
+        "n|idx|public.step_comments_execution_id_index",
+        "e|idx|public.step_comments_execution_id_index",
+        "n|rel|public.step_comments_execution_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.step_comments",
+        "n|sch|public",
+        "n|col|public.step_comments.execution_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "step_evidences",
+        "step_evidences_execution_id_index"
+      ],
+      "writes": [
+        "s|idx|public.step_evidences_execution_id_index",
+        "n|idx|public.step_evidences_execution_id_index",
+        "e|idx|public.step_evidences_execution_id_index",
+        "n|rel|public.step_evidences_execution_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.step_evidences",
+        "n|sch|public",
+        "n|col|public.step_evidences.execution_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "step_status_events",
+        "step_status_events_execution_id_index"
+      ],
+      "writes": [
+        "s|idx|public.step_status_events_execution_id_index",
+        "n|idx|public.step_status_events_execution_id_index",
+        "e|idx|public.step_status_events_execution_id_index",
+        "n|rel|public.step_status_events_execution_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.step_status_events",
+        "n|sch|public",
+        "n|col|public.step_status_events.execution_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "approval_events"
+      ],
+      "writes": [
+        "s|fk|public.approval_events.approval_events_execution_id_executions_id_fkey",
+        "n|fk|public.approval_events.approval_events_execution_id_executions_id_fkey",
+        "e|fk|public.approval_events.approval_events_execution_id_executions_id_fkey",
+        "n|con|public.approval_events.approval_events_execution_id_executions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.approval_events",
+        "n|sch|public",
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|col|public.approval_events.execution_id",
+        "n|col|public.executions.id",
+        "e|uniqueness|public.executions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "approval_events"
+      ],
+      "writes": [
+        "s|fk|public.approval_events.approval_events_actor_id_user_id_fkey",
+        "n|fk|public.approval_events.approval_events_actor_id_user_id_fkey",
+        "e|fk|public.approval_events.approval_events_actor_id_user_id_fkey",
+        "n|con|public.approval_events.approval_events_actor_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.approval_events",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.approval_events.actor_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "execution_steps"
+      ],
+      "writes": [
+        "s|fk|public.execution_steps.execution_steps_execution_id_executions_id_fkey",
+        "n|fk|public.execution_steps.execution_steps_execution_id_executions_id_fkey",
+        "e|fk|public.execution_steps.execution_steps_execution_id_executions_id_fkey",
+        "n|con|public.execution_steps.execution_steps_execution_id_executions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.execution_steps",
+        "n|sch|public",
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|col|public.execution_steps.execution_id",
+        "n|col|public.executions.id",
+        "e|uniqueness|public.executions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "execution_steps"
+      ],
+      "writes": [
+        "s|fk|public.execution_steps.execution_steps_updated_by_user_id_fkey",
+        "n|fk|public.execution_steps.execution_steps_updated_by_user_id_fkey",
+        "e|fk|public.execution_steps.execution_steps_updated_by_user_id_fkey",
+        "n|con|public.execution_steps.execution_steps_updated_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.execution_steps",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.execution_steps.updated_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "execution_variables"
+      ],
+      "writes": [
+        "s|fk|public.execution_variables.execution_variables_execution_id_executions_id_fkey",
+        "n|fk|public.execution_variables.execution_variables_execution_id_executions_id_fkey",
+        "e|fk|public.execution_variables.execution_variables_execution_id_executions_id_fkey",
+        "n|con|public.execution_variables.execution_variables_execution_id_executions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.execution_variables",
+        "n|sch|public",
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|col|public.execution_variables.execution_id",
+        "n|col|public.executions.id",
+        "e|uniqueness|public.executions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|fk|public.executions.executions_procedure_id_procedures_id_fkey",
+        "n|fk|public.executions.executions_procedure_id_procedures_id_fkey",
+        "e|fk|public.executions.executions_procedure_id_procedures_id_fkey",
+        "n|con|public.executions.executions_procedure_id_procedures_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|tbl|public.procedures",
+        "n|sch|public",
+        "n|col|public.executions.procedure_id",
+        "n|col|public.procedures.id",
+        "e|uniqueness|public.procedures.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|fk|public.executions.executions_version_id_procedure_versions_id_fkey",
+        "n|fk|public.executions.executions_version_id_procedure_versions_id_fkey",
+        "e|fk|public.executions.executions_version_id_procedure_versions_id_fkey",
+        "n|con|public.executions.executions_version_id_procedure_versions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|tbl|public.procedure_versions",
+        "n|sch|public",
+        "n|col|public.executions.version_id",
+        "n|col|public.procedure_versions.id",
+        "e|uniqueness|public.procedure_versions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|fk|public.executions.executions_executor_id_user_id_fkey",
+        "n|fk|public.executions.executions_executor_id_user_id_fkey",
+        "e|fk|public.executions.executions_executor_id_user_id_fkey",
+        "n|con|public.executions.executions_executor_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.executions.executor_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|fk|public.executions.executions_cancelled_by_user_id_fkey",
+        "n|fk|public.executions.executions_cancelled_by_user_id_fkey",
+        "e|fk|public.executions.executions_cancelled_by_user_id_fkey",
+        "n|con|public.executions.executions_cancelled_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.executions.cancelled_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "executions"
+      ],
+      "writes": [
+        "s|fk|public.executions.executions_approval_decided_by_user_id_fkey",
+        "n|fk|public.executions.executions_approval_decided_by_user_id_fkey",
+        "e|fk|public.executions.executions_approval_decided_by_user_id_fkey",
+        "n|con|public.executions.executions_approval_decided_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.executions",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.executions.approval_decided_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_comments"
+      ],
+      "writes": [
+        "s|fk|public.step_comments.step_comments_created_by_user_id_fkey",
+        "n|fk|public.step_comments.step_comments_created_by_user_id_fkey",
+        "e|fk|public.step_comments.step_comments_created_by_user_id_fkey",
+        "n|con|public.step_comments.step_comments_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.step_comments",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.step_comments.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_comments"
+      ],
+      "writes": [
+        "s|fk|public.step_comments.step_comments_step_fk",
+        "n|fk|public.step_comments.step_comments_step_fk",
+        "e|fk|public.step_comments.step_comments_step_fk",
+        "n|con|public.step_comments.step_comments_step_fk"
+      ],
+      "reads": [
+        "n|tbl|public.step_comments",
+        "n|sch|public",
+        "n|tbl|public.execution_steps",
+        "n|sch|public",
+        "n|col|public.step_comments.execution_id",
+        "n|col|public.step_comments.step_id",
+        "n|col|public.execution_steps.execution_id",
+        "n|col|public.execution_steps.step_id",
+        "e|uniqueness|public.execution_steps.execution_id.step_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_evidences"
+      ],
+      "writes": [
+        "s|fk|public.step_evidences.step_evidences_created_by_user_id_fkey",
+        "n|fk|public.step_evidences.step_evidences_created_by_user_id_fkey",
+        "e|fk|public.step_evidences.step_evidences_created_by_user_id_fkey",
+        "n|con|public.step_evidences.step_evidences_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.step_evidences",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.step_evidences.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_evidences"
+      ],
+      "writes": [
+        "s|fk|public.step_evidences.step_evidences_step_fk",
+        "n|fk|public.step_evidences.step_evidences_step_fk",
+        "e|fk|public.step_evidences.step_evidences_step_fk",
+        "n|con|public.step_evidences.step_evidences_step_fk"
+      ],
+      "reads": [
+        "n|tbl|public.step_evidences",
+        "n|sch|public",
+        "n|tbl|public.execution_steps",
+        "n|sch|public",
+        "n|col|public.step_evidences.execution_id",
+        "n|col|public.step_evidences.step_id",
+        "n|col|public.execution_steps.execution_id",
+        "n|col|public.execution_steps.step_id",
+        "e|uniqueness|public.execution_steps.execution_id.step_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_status_events"
+      ],
+      "writes": [
+        "s|fk|public.step_status_events.step_status_events_changed_by_user_id_fkey",
+        "n|fk|public.step_status_events.step_status_events_changed_by_user_id_fkey",
+        "e|fk|public.step_status_events.step_status_events_changed_by_user_id_fkey",
+        "n|con|public.step_status_events.step_status_events_changed_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.step_status_events",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.step_status_events.changed_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "step_status_events"
+      ],
+      "writes": [
+        "s|fk|public.step_status_events.step_status_events_step_fk",
+        "n|fk|public.step_status_events.step_status_events_step_fk",
+        "e|fk|public.step_status_events.step_status_events_step_fk",
+        "n|con|public.step_status_events.step_status_events_step_fk"
+      ],
+      "reads": [
+        "n|tbl|public.step_status_events",
+        "n|sch|public",
+        "n|tbl|public.execution_steps",
+        "n|sch|public",
+        "n|col|public.step_status_events.execution_id",
+        "n|col|public.step_status_events.step_id",
+        "n|col|public.execution_steps.execution_id",
+        "n|col|public.execution_steps.step_id",
+        "e|uniqueness|public.execution_steps.execution_id.step_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "approval_events",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "execution_steps",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "execution_variables",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "executions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "step_comments",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "step_evidences",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "step_status_events",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "comment",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "actor_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "occurred_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "step_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "section",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'pending'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "skip_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "updated_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_variables",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_variables",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_variables",
+        "name": "value",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "procedure_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "version_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executor_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'running'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "started_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "ended_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "cancelled_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "cancel_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "variables_locked_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "approval_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "approval_decided_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "approval_decided_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "step_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "body",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "created_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "step_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "body",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "created_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "execution_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "from_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "to_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "skip_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "changed_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "changed_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "approval_events_execution_id_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "execution_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_executor_id_status_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "executor_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_procedure_id_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "procedure_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "step_comments_execution_id_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "execution_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "step_evidences_execution_id_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "execution_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_status_events_execution_id_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "execution_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "approval_events_execution_id_executions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "execution_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "executions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "approval_events_actor_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "actor_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_execution_id_executions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "execution_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "executions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_updated_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "updated_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_variables",
+        "name": "execution_variables_execution_id_executions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "execution_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "executions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_procedure_id_procedures_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "procedure_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "procedures",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_version_id_procedure_versions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "version_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "procedure_versions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_executor_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "executor_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_cancelled_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "cancelled_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_approval_decided_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "approval_decided_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "step_comments_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "step_comments_step_fk",
+        "nameExplicit": true,
+        "columns": [
+          "execution_id",
+          "step_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "execution_steps",
+        "columnsTo": [
+          "execution_id",
+          "step_id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "step_evidences_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "step_evidences_step_fk",
+        "nameExplicit": true,
+        "columns": [
+          "execution_id",
+          "step_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "execution_steps",
+        "columnsTo": [
+          "execution_id",
+          "step_id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_status_events_changed_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "changed_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_status_events_step_fk",
+        "nameExplicit": true,
+        "columns": [
+          "execution_id",
+          "step_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "execution_steps",
+        "columnsTo": [
+          "execution_id",
+          "step_id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_pkey",
+        "columns": [
+          "execution_id",
+          "step_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_variables",
+        "name": "execution_variables_pkey",
+        "columns": [
+          "execution_id",
+          "name"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "approval_events_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_comments",
+        "name": "step_comments_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_evidences",
+        "name": "step_evidences_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_status_events_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "approval_events",
+        "name": "approval_events_kind_check",
+        "value": "kind in ('requested', 'approved', 'rejected')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_section_check",
+        "value": "section in ('main', 'rollback')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_status_check",
+        "value": "status in ('pending', 'done', 'skipped', 'failed')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "execution_steps",
+        "name": "execution_steps_skip_reason_check",
+        "value": "status <> 'skipped' or skip_reason is not null",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_status_check",
+        "value": "status in ('running', 'completed', 'abnormal', 'cancelled')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_ended_check",
+        "value": "(status = 'running') = (ended_at is null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_cancelled_check",
+        "value": "(status = 'cancelled') = (cancelled_by is not null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_approval_status_check",
+        "value": "approval_status is null or approval_status in ('pending', 'approved', 'rejected')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executions",
+        "name": "executions_approval_ended_check",
+        "value": "approval_status is null or status in ('completed', 'abnormal')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "step_status_events",
+        "name": "step_status_events_status_check",
+        "value": "from_status in ('pending', 'done', 'skipped', 'failed') and to_status in ('pending', 'done', 'skipped', 'failed')",
+        "entityType": "checks"
+      }
+    }
+  ]
+}
