@@ -11,13 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useBanUser } from "./queries.ts";
 
-// 無効化の確認（screens.md 4章）。実行中の実行の件数の案内（D-36）は F-05 で足す。
+// 無効化の確認（screens.md 4章）。実行中の実行があれば件数を案内する（D-36）。
 export function BanUserDialog({
   user,
+  runningCount,
   open,
   onOpenChange,
 }: {
   user: AdminUser;
+  runningCount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -44,6 +46,12 @@ export function BanUserDialog({
             </AlertDialogDescription>
           </div>
         </div>
+        {runningCount > 0 && (
+          <div className="rounded-lg bg-muted px-4 py-3 text-sm">
+            このユーザーの実行中の実行が <b className="text-base">{runningCount}</b>{" "}
+            件あります。無効化した後、管理者が実行の画面から中止できます。
+          </div>
+        )}
         {ban.error && <ErrorBanner error={ban.error} />}
         <div className="mt-2 flex justify-end gap-2">
           <AlertDialogCancel variant="ghost">キャンセル</AlertDialogCancel>
