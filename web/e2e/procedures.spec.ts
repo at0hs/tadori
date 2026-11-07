@@ -325,3 +325,27 @@ test("D-07: アーカイブすると「編集」が出なくなり、編集画�
   await expect(author).toHaveURL(new RegExp(`${procedureUrl}\\?notice=archived-edit$`));
   await expect(author.getByText("アーカイブした手順書は編集できません。")).toBeVisible();
 });
+
+test("D-34: 作成者ロールのない人には「未公開」のカードを出さず、未公開での絞り込みは「すべて」にする", async ({
+  browser,
+}) => {
+  const card = (page: Page, label: string) =>
+    page.getByRole("button", { name: new RegExp(`^${label}`) });
+
+  // 作成者には4枚
+  await author.goto("/procedures");
+  await expect(card(author, "未公開")).toBeVisible();
+
+  // 管理者ロールだけの人には3枚
+  const admin = await pageAs(browser, ADMIN_STATE);
+  await admin.goto("/procedures");
+  await expect(card(admin, "すべて（アーカイブを除く）")).toBeVisible();
+  await expect(card(admin, "編集中")).toBeVisible();
+  await expect(card(admin, "アーカイブ")).toBeVisible();
+  await expect(card(admin, "未公開")).toHaveCount(0);
+
+  await admin.goto("/procedures?status=unpublished");
+  await expect(card(admin, "すべて（アーカイブを除く）")).toHaveAttribute("aria-pressed", "true");
+  await expect(admin.getByText("証明書の更新")).toBeVisible();
+  await admin.context().close();
+});

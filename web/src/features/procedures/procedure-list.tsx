@@ -54,16 +54,19 @@ const SORT_LABELS: Record<ProcedureSort, string> = {
 };
 
 // S-04 の中身（ui.md 7.2）。絞り込みは URL の検索条件に持つ（D-12）。
-// 未公開の手順書は API が作成者にだけ返すので、ここでは出し分けない（D-34）。
+// 未公開の手順書は API が作成者ロールの人にだけ返す（D-34）。作成者ロールのない人には、
+// いつも0件になる「未公開」のカードを出さない（呼ぶ側は status を "unpublished" にしない）。
 export function ProcedureList({
   filter,
   onFilterChange,
-  canCreate,
+  isAuthor,
 }: {
   filter: ProcedureFilter;
   onFilterChange: (next: Partial<ProcedureFilter>) => void;
-  canCreate: boolean;
+  isAuthor: boolean;
 }) {
+  const canCreate = isAuthor;
+  const cards = isAuthor ? CARDS : CARDS.filter((c) => c.status !== "unpublished");
   const { data: list, error, isPending } = useQuery(procedureListQueryOptions);
   const counts = list ? procedureCounts(list) : undefined;
   const shown = list ? filterProcedures(list, filter) : [];
@@ -76,8 +79,13 @@ export function ProcedureList({
 
   return (
     <>
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {CARDS.map((card) => (
+      <div
+        className={cn(
+          "mt-5 grid grid-cols-2 gap-3",
+          cards.length === 4 ? "md:grid-cols-4" : "md:grid-cols-3",
+        )}
+      >
+        {cards.map((card) => (
           <button
             key={card.status}
             type="button"

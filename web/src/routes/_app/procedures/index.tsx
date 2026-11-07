@@ -26,6 +26,8 @@ function ProceduresPage() {
   const navigate = Route.useNavigate();
   const me = useMe();
   const canCreate = me.roles.includes("author");
+  // 作成者ロールのない人には未公開の手順書が返らないので、未公開での絞り込みは「すべて」として扱う
+  const status = !canCreate && search.status === "unpublished" ? "all" : search.status;
   return (
     <>
       <PageHeader
@@ -41,8 +43,8 @@ function ProceduresPage() {
         }
       />
       <ProcedureList
-        filter={{ q: search.q, tags: search.tag, status: search.status, sort: search.sort }}
-        canCreate={canCreate}
+        filter={{ q: search.q, tags: search.tag, status, sort: search.sort }}
+        isAuthor={canCreate}
         onFilterChange={(next) =>
           navigate({
             search: (prev) => ({
