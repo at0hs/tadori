@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { ApiError } from "./api.ts";
-import { createQueryClient, globalErrorAction } from "./query.ts";
+import { createQueryClient, globalErrorAction, holdLoginRedirect } from "./query.ts";
 
 test("未認証はログインへ、パスワード変更が必要は変更へ、他は何もしない", () => {
   expect(globalErrorAction(new ApiError({ code: "UNAUTHENTICATED", status: 401 }))).toBe("login");
@@ -53,4 +53,29 @@ test("meta.keepOnUnauthenticated の mutation は、未認証でもログイン�
     .execute(undefined)
     .catch(() => {});
   expect(actions).toEqual([]);
+});
+
+test("入力を残す画面が開いている間は、裏の再取得が未認証でもログインへ移さない（screens.md 8章）", async () => {
+  const actions: string[] = [];
+  const qc = createQueryClient((a) => actions.push(a));
+  const release = holdLoginRedirect();
+  await qc
+    .fetchQuery({
+      queryKey: ["x"],
+      queryFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+    })
+    .catch(() => {});
+  expect(actions).toEqual([]);
+  release();
+  await qc
+    .fetchQuery({
+      queryKey: ["y"],
+      queryFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+    })
+    .catch(() => {});
+  expect(actions).toEqual(["login"]);
 });

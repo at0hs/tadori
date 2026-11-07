@@ -139,6 +139,123 @@ test("F-03 AC: 他の人が先に保存した下書きを上書きできない",
   await other.context().close();
 });
 
+test("保存の返事を待つ間に打った文字は、保存の後も残り、未保存の印が付く", async () => {
+  // 応答を遅らせる
+  await author.route("**/api/procedures/*/draft", async (route) => {
+    if (route.request().method() === "PUT") await new Promise((r) => setTimeout(r, 800));
+    await route.continue();
+  });
+  await author.getByLabel("概要", { exact: true }).fill("保存する概要");
+  await author.getByRole("button", { name: "保存", exact: true }).click();
+  await author.getByLabel("概要", { exact: true }).fill("保存中に打った概要");
+  await expect(author.getByText("最終保存 作成者 一郎")).toBeVisible();
+  await expect(author.getByLabel("概要", { exact: true })).toHaveValue("保存中に打った概要");
+  await expect(author.getByText("保存していない変更があります")).toBeVisible();
+  await author.unroute("**/api/procedures/*/draft");
+});
+
+test("D-58・UI-05: 変換を確定する Enter ではタグを足さず、全角の「＃｛」は「#{」に直して補完を出す", async () => {
+  const cdp = await author.context().newCDPSession(author);
+  const composeAndCommit = async (reading: string, committed: string) => {
+    for (let i = 1; i <= reading.length; i++) {
+      const t = reading.slice(0, i);
+      await cdp.send("Input.imeSetComposition", {
+        text: t,
+        selectionStart: t.length,
+        selectionEnd: t.length,
+      });
+    }
+    // 変換中の Enter（実機では keyCode 229 の keydown が先に届き、その後に確定される）
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 229,
+      nativeVirtualKeyCode: 229,
+    });
+    await cdp.send("Input.insertText", { text: committed });
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+    });
+  };
+
+  const tags = author.getByRole("combobox", { name: "タグ" });
+  const chips = author.locator('[data-slot="combobox-chip"]');
+  const before = await chips.count();
+  await tags.click();
+  await composeAndCommit("でーた", "データ");
+  await expect(chips).toHaveCount(before);
+  await expect(tags).toHaveValue("データ");
+  await author.keyboard.press("Enter");
+  await expect(chips).toHaveCount(before + 1);
+  await expect(chips.last()).toContainText("データ");
+
+  const command = author.getByRole("textbox", { name: "手順 1のコマンド", exact: true });
+  await command.click();
+  await author.keyboard.press("End");
+  await author.keyboard.type(" ");
+  await composeAndCommit("＃｛", "＃｛");
+  await expect(command).toContainText("sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak #{");
+  await expect(author.locator(".cm-tooltip-autocomplete")).toContainText("host");
+  await author.keyboard.press("Escape");
+  await cdp.detach();
+});
+
+test("D-55: 読み込んだ後に他の人が公開していたら、保存はできず、誰がいつ公開したかを出す", async ({
+  browser,
+}) => {
+  const origin = new URL(author.url()).origin;
+  const res = await author.request.post("/api/procedures", {
+    headers: { origin },
+    data: {
+      content: {
+        title: "証明書の更新",
+        summary: "",
+        tags: [],
+        prerequisites: "",
+        variables: [],
+        steps: [
+          {
+            id: "01970000-0000-7000-8000-000000000001",
+            title: "証明書を置く",
+            description: "",
+            command: "",
+            verification: "",
+            evidenceRequired: false,
+          },
+        ],
+        rollbackSteps: [],
+      },
+    },
+  });
+  const { id } = await res.json();
+  await author.goto(`/procedures/${id}/edit`);
+  await publish(author, "最初の版");
+  await expect(author).toHaveURL(`/procedures/${id}`);
+
+  // 2人とも v1 を読み込み（下書きなし）、二郎が公開する
+  await author.goto(`/procedures/${id}/edit`);
+  const other = await pageAs(browser, AUTHOR_STATES[1]);
+  await other.goto(`/procedures/${id}/edit`);
+  await other.getByLabel("概要", { exact: true }).fill("二郎の変更");
+  await publish(other, "二郎の変更");
+  await expect(other).toHaveURL(`/procedures/${id}`);
+
+  await author.getByLabel("概要", { exact: true }).fill("一郎の変更");
+  await author.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(
+    author.getByText("保存できませんでした。読み込んだ後に手順書が変わっています"),
+  ).toBeVisible();
+  await expect(author.getByText(/作成者 二郎 が .* に新しい版を公開しました。/)).toBeVisible();
+  await other.context().close();
+  // 次のテストのため、変更を捨てて離れる
+  await author.getByRole("button", { name: "自分の変更を捨てて読み込み直す" }).click();
+  await author.goto(procedureUrl);
+});
+
 test("F-02 AC: 手順のステップが1つもない手順書は公開できない", async () => {
   await author.goto("/procedures/new");
   await author.getByRole("textbox", { name: /^タイトル/ }).fill("書きかけの手順書");
@@ -162,11 +279,11 @@ test("D-29: 未公開の手順書は、下書きの破棄で一覧から消え�
 
 test("D-07: アーカイブすると「編集」が出なくなり、編集画面を開くと詳細に戻される", async () => {
   await author.goto(procedureUrl);
-  // 編集中（二郎の下書きがある）
+  // 編集中（下書きがある）
   await expect(author.getByText(/編集中です。下書きは/)).toBeVisible();
   await author.getByRole("button", { name: "その他の操作" }).click();
   await author.getByRole("menuitem", { name: "アーカイブ" }).click();
-  await expect(author.getByText(/編集中の下書き（作成者 二郎、/)).toBeVisible();
+  await expect(author.getByText(/編集中の下書き（作成者 .郎、/)).toBeVisible();
   await author.getByRole("button", { name: "アーカイブする" }).click();
   await expect(
     author.getByText("アーカイブした手順書です。新しい実行は始められません。"),

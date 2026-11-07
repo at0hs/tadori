@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type FieldError, isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
+import { holdLoginRedirect } from "@/lib/query.ts";
 import { PROCEDURES_CRUMB } from "../procedure-detail.tsx";
 import {
   draftQueryOptions,
@@ -116,6 +117,10 @@ export function ProcedureEditor({
   const publish = usePublish();
   const discard = useDiscardDraft(id);
 
+  // この画面を開いている間は、裏の再取得が未認証でもログインへ移さない（screens.md 8章）。
+  // 保存などのときに未認証を受け取って、セッション切れの帯を出す
+  useEffect(() => holdLoginRedirect(), []);
+
   // 成功した後の移動は止めない
   const leaving = useRef(false);
   const dirty = useRef(isDirty);
@@ -195,7 +200,8 @@ export function ProcedureEditor({
           updatedBy: saved.updatedBy,
           updatedAt: saved.updatedAt,
         }));
-        form.reset(content);
+        // 比べる元だけを保存した内容にし、保存中に打った文字は残す（未保存の印も付く）
+        form.reset(content, { keepValues: true });
       } catch (e) {
         handleError(e, content, "保存");
       }
@@ -289,7 +295,7 @@ export function ProcedureEditor({
       });
       setBanner(null);
     } catch (e) {
-      setBanner({ kind: "error", error: e });
+      handleError(e, form.getValues(), "保存");
     } finally {
       setReloading(false);
     }
