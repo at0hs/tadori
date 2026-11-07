@@ -11,18 +11,41 @@ export function globalErrorAction(e: unknown): GlobalErrorAction | null {
   return null;
 }
 
+// 入力中の内容を残したい画面（手順書の編集画面）が開いている数。0 でなければ、未認証でもログインへ移さない。
+let loginRedirectHolds = 0;
+
+/**
+ * 入力中の内容を残したい画面が開いている間、未認証でログインへ移すのを止める（screens.md 8章）。
+ * 裏の再取得（ウィンドウに戻ったときなど）でも、入力を消さないため。返した関数で元に戻す。
+ */
+export function holdLoginRedirect(): () => void {
+  loginRedirectHolds += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    loginRedirectHolds -= 1;
+  };
+}
+
 export function createQueryClient(onGlobalError: (action: GlobalErrorAction) => void): QueryClient {
-  const onError = (e: unknown) => {
+  const onError = (e: unknown, meta?: Record<string, unknown>) => {
     // 権限なし・パスワード変更が必要は、自分の状態（ロールなど）が変わった合図なので me を取り直す
     if (isApiError(e, "FORBIDDEN") || isApiError(e, "PASSWORD_CHANGE_REQUIRED")) {
       void client.invalidateQueries({ queryKey: ["me"] });
     }
     const action = globalErrorAction(e);
+    // 編集画面の保存などは、入力中の内容を残すためにログインへ移さない（screens.md 8章）
+    if (action === "login" && (meta?.keepOnUnauthenticated === true || loginRedirectHolds > 0)) {
+      return;
+    }
     if (action) onGlobalError(action);
   };
   const client = new QueryClient({
-    queryCache: new QueryCache({ onError }),
-    mutationCache: new MutationCache({ onError }),
+    queryCache: new QueryCache({ onError: (e) => onError(e) }),
+    mutationCache: new MutationCache({
+      onError: (e, _vars, _ctx, mutation) => onError(e, mutation.meta),
+    }),
     defaultOptions: {
       queries: {
         // API のエラー（4xx など）は繰り返しても同じなので、やり直さない

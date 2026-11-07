@@ -35,3 +35,14 @@ export function pathParams<T extends z.ZodType>(schema: T) {
     return result.data;
   });
 }
+
+/** URL の検索条件を検証する。合わなければ VALIDATION_FAILED と欄ごとの errors。 */
+export function queryParams<T extends z.ZodType>(schema: T) {
+  return validator("query", (value): z.output<T> => {
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      throw new AppError("VALIDATION_FAILED", undefined, { errors: toFieldErrors(result.error) });
+    }
+    return result.data;
+  });
+}

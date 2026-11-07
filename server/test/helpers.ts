@@ -16,7 +16,9 @@ export const PASSWORD = "Passw0rd-dummy-01";
  * 認証を使うテストはロールバックではなく、テーブルを空にして分ける。
  */
 export async function resetDb() {
-  await db.execute(sql`truncate table "user", session, account, verification, user_roles cascade`);
+  await db.execute(
+    sql`truncate table "user", session, account, verification, user_roles, procedures, procedure_versions, procedure_drafts cascade`,
+  );
 }
 
 let ipSeq = 0;

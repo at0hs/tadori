@@ -16,9 +16,14 @@ import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAccountPasswordRouteImport } from './routes/_app/account/password'
 import { Route as AppExecutionsIndexRouteImport } from './routes/_app/executions/index'
 import { Route as AppProceduresIndexRouteImport } from './routes/_app/procedures/index'
+import { Route as AppProceduresNewRouteImport } from './routes/_app/procedures/new'
 import { Route as AppAdminUsersIndexRouteImport } from './routes/_app/admin/users/index'
 import { Route as AppAdminUsersUserIdRouteImport } from './routes/_app/admin/users/$userId'
 import { Route as AppAdminUsersNewRouteImport } from './routes/_app/admin/users/new'
+import { Route as AppProceduresProcedureIdIndexRouteImport } from './routes/_app/procedures/$procedureId/index'
+import { Route as AppProceduresProcedureIdEditRouteImport } from './routes/_app/procedures/$procedureId/edit'
+import { Route as AppProceduresProcedureIdVersionsIndexRouteImport } from './routes/_app/procedures/$procedureId/versions/index'
+import { Route as AppProceduresProcedureIdVersionsVersionNoRouteImport } from './routes/_app/procedures/$procedureId/versions/$versionNo'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -54,6 +59,11 @@ const AppProceduresIndexRoute = AppProceduresIndexRouteImport.update({
   path: '/procedures/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProceduresNewRoute = AppProceduresNewRouteImport.update({
+  id: '/procedures/new',
+  path: '/procedures/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminUsersIndexRoute = AppAdminUsersIndexRouteImport.update({
   id: '/users/',
   path: '/users/',
@@ -69,28 +79,62 @@ const AppAdminUsersNewRoute = AppAdminUsersNewRouteImport.update({
   path: '/users/new',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppProceduresProcedureIdIndexRoute =
+  AppProceduresProcedureIdIndexRouteImport.update({
+    id: '/procedures/$procedureId/',
+    path: '/procedures/$procedureId/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppProceduresProcedureIdEditRoute =
+  AppProceduresProcedureIdEditRouteImport.update({
+    id: '/procedures/$procedureId/edit',
+    path: '/procedures/$procedureId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppProceduresProcedureIdVersionsIndexRoute =
+  AppProceduresProcedureIdVersionsIndexRouteImport.update({
+    id: '/procedures/$procedureId/versions/',
+    path: '/procedures/$procedureId/versions/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppProceduresProcedureIdVersionsVersionNoRoute =
+  AppProceduresProcedureIdVersionsVersionNoRouteImport.update({
+    id: '/procedures/$procedureId/versions/$versionNo',
+    path: '/procedures/$procedureId/versions/$versionNo',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRouteWithChildren
   '/account/password': typeof AppAccountPasswordRoute
+  '/procedures/new': typeof AppProceduresNewRoute
   '/executions/': typeof AppExecutionsIndexRoute
   '/procedures/': typeof AppProceduresIndexRoute
   '/admin/users/$userId': typeof AppAdminUsersUserIdRoute
   '/admin/users/new': typeof AppAdminUsersNewRoute
+  '/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/admin/users/': typeof AppAdminUsersIndexRoute
+  '/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRouteWithChildren
   '/': typeof AppIndexRoute
   '/account/password': typeof AppAccountPasswordRoute
+  '/procedures/new': typeof AppProceduresNewRoute
   '/executions': typeof AppExecutionsIndexRoute
   '/procedures': typeof AppProceduresIndexRoute
   '/admin/users/$userId': typeof AppAdminUsersUserIdRoute
   '/admin/users/new': typeof AppAdminUsersNewRoute
+  '/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/admin/users': typeof AppAdminUsersIndexRoute
+  '/procedures/$procedureId': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/procedures/$procedureId/versions': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -99,11 +143,16 @@ export interface FileRoutesById {
   '/_app/admin': typeof AppAdminRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/account/password': typeof AppAccountPasswordRoute
+  '/_app/procedures/new': typeof AppProceduresNewRoute
   '/_app/executions/': typeof AppExecutionsIndexRoute
   '/_app/procedures/': typeof AppProceduresIndexRoute
   '/_app/admin/users/$userId': typeof AppAdminUsersUserIdRoute
   '/_app/admin/users/new': typeof AppAdminUsersNewRoute
+  '/_app/procedures/$procedureId/edit': typeof AppProceduresProcedureIdEditRoute
   '/_app/admin/users/': typeof AppAdminUsersIndexRoute
+  '/_app/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/_app/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  '/_app/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -112,22 +161,32 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/account/password'
+    | '/procedures/new'
     | '/executions/'
     | '/procedures/'
     | '/admin/users/$userId'
     | '/admin/users/new'
+    | '/procedures/$procedureId/edit'
     | '/admin/users/'
+    | '/procedures/$procedureId/'
+    | '/procedures/$procedureId/versions/$versionNo'
+    | '/procedures/$procedureId/versions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/admin'
     | '/'
     | '/account/password'
+    | '/procedures/new'
     | '/executions'
     | '/procedures'
     | '/admin/users/$userId'
     | '/admin/users/new'
+    | '/procedures/$procedureId/edit'
     | '/admin/users'
+    | '/procedures/$procedureId'
+    | '/procedures/$procedureId/versions/$versionNo'
+    | '/procedures/$procedureId/versions'
   id:
     | '__root__'
     | '/_app'
@@ -135,11 +194,16 @@ export interface FileRouteTypes {
     | '/_app/admin'
     | '/_app/'
     | '/_app/account/password'
+    | '/_app/procedures/new'
     | '/_app/executions/'
     | '/_app/procedures/'
     | '/_app/admin/users/$userId'
     | '/_app/admin/users/new'
+    | '/_app/procedures/$procedureId/edit'
     | '/_app/admin/users/'
+    | '/_app/procedures/$procedureId/'
+    | '/_app/procedures/$procedureId/versions/$versionNo'
+    | '/_app/procedures/$procedureId/versions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -198,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProceduresIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/procedures/new': {
+      id: '/_app/procedures/new'
+      path: '/procedures/new'
+      fullPath: '/procedures/new'
+      preLoaderRoute: typeof AppProceduresNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/users/': {
       id: '/_app/admin/users/'
       path: '/users'
@@ -218,6 +289,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/new'
       preLoaderRoute: typeof AppAdminUsersNewRouteImport
       parentRoute: typeof AppAdminRoute
+    }
+    '/_app/procedures/$procedureId/': {
+      id: '/_app/procedures/$procedureId/'
+      path: '/procedures/$procedureId'
+      fullPath: '/procedures/$procedureId/'
+      preLoaderRoute: typeof AppProceduresProcedureIdIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/procedures/$procedureId/edit': {
+      id: '/_app/procedures/$procedureId/edit'
+      path: '/procedures/$procedureId/edit'
+      fullPath: '/procedures/$procedureId/edit'
+      preLoaderRoute: typeof AppProceduresProcedureIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/procedures/$procedureId/versions/': {
+      id: '/_app/procedures/$procedureId/versions/'
+      path: '/procedures/$procedureId/versions'
+      fullPath: '/procedures/$procedureId/versions/'
+      preLoaderRoute: typeof AppProceduresProcedureIdVersionsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/procedures/$procedureId/versions/$versionNo': {
+      id: '/_app/procedures/$procedureId/versions/$versionNo'
+      path: '/procedures/$procedureId/versions/$versionNo'
+      fullPath: '/procedures/$procedureId/versions/$versionNo'
+      preLoaderRoute: typeof AppProceduresProcedureIdVersionsVersionNoRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
@@ -242,16 +341,28 @@ interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppAccountPasswordRoute: typeof AppAccountPasswordRoute
+  AppProceduresNewRoute: typeof AppProceduresNewRoute
   AppExecutionsIndexRoute: typeof AppExecutionsIndexRoute
   AppProceduresIndexRoute: typeof AppProceduresIndexRoute
+  AppProceduresProcedureIdEditRoute: typeof AppProceduresProcedureIdEditRoute
+  AppProceduresProcedureIdIndexRoute: typeof AppProceduresProcedureIdIndexRoute
+  AppProceduresProcedureIdVersionsVersionNoRoute: typeof AppProceduresProcedureIdVersionsVersionNoRoute
+  AppProceduresProcedureIdVersionsIndexRoute: typeof AppProceduresProcedureIdVersionsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppAccountPasswordRoute: AppAccountPasswordRoute,
+  AppProceduresNewRoute: AppProceduresNewRoute,
   AppExecutionsIndexRoute: AppExecutionsIndexRoute,
   AppProceduresIndexRoute: AppProceduresIndexRoute,
+  AppProceduresProcedureIdEditRoute: AppProceduresProcedureIdEditRoute,
+  AppProceduresProcedureIdIndexRoute: AppProceduresProcedureIdIndexRoute,
+  AppProceduresProcedureIdVersionsVersionNoRoute:
+    AppProceduresProcedureIdVersionsVersionNoRoute,
+  AppProceduresProcedureIdVersionsIndexRoute:
+    AppProceduresProcedureIdVersionsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

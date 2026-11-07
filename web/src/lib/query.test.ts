@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { ApiError } from "./api.ts";
-import { createQueryClient, globalErrorAction } from "./query.ts";
+import { createQueryClient, globalErrorAction, holdLoginRedirect } from "./query.ts";
 
 test("未認証はログインへ、パスワード変更が必要は変更へ、他は何もしない", () => {
   expect(globalErrorAction(new ApiError({ code: "UNAUTHENTICATED", status: 401 }))).toBe("login");
@@ -37,4 +37,45 @@ test("パスワード変更が必要のエラーでは me を取り直してか�
   await failMutation(qc, new ApiError({ code: "PASSWORD_CHANGE_REQUIRED", status: 403 }));
   expect(qc.getQueryState(["me"])?.isInvalidated).toBe(true);
   expect(actions).toEqual(["change-password"]);
+});
+
+test("meta.keepOnUnauthenticated の mutation は、未認証でもログインへ移さない（編集画面、screens.md 8章）", async () => {
+  const actions: string[] = [];
+  const qc = createQueryClient((a) => actions.push(a));
+  await qc
+    .getMutationCache()
+    .build(qc, {
+      mutationFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+      meta: { keepOnUnauthenticated: true },
+    })
+    .execute(undefined)
+    .catch(() => {});
+  expect(actions).toEqual([]);
+});
+
+test("入力を残す画面が開いている間は、裏の再取得が未認証でもログインへ移さない（screens.md 8章）", async () => {
+  const actions: string[] = [];
+  const qc = createQueryClient((a) => actions.push(a));
+  const release = holdLoginRedirect();
+  await qc
+    .fetchQuery({
+      queryKey: ["x"],
+      queryFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+    })
+    .catch(() => {});
+  expect(actions).toEqual([]);
+  release();
+  await qc
+    .fetchQuery({
+      queryKey: ["y"],
+      queryFn: async () => {
+        throw new ApiError({ code: "UNAUTHENTICATED", status: 401 });
+      },
+    })
+    .catch(() => {});
+  expect(actions).toEqual(["login"]);
 });

@@ -1,0 +1,835 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6a8cdd7a-e7c4-468f-9d67-11e1563ce867",
+  "prevIds": [
+    "da628431-6d83-4c35-b2fc-ee00d98d653b"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_drafts"
+      ],
+      "writes": [
+        "s|tbl|public.procedure_drafts",
+        "n|tbl|public.procedure_drafts",
+        "e|tbl|public.procedure_drafts",
+        "n|rel|public.procedure_drafts",
+        "n|type|public.procedure_drafts",
+        "n|rel|public.procedure_drafts_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_versions"
+      ],
+      "writes": [
+        "s|tbl|public.procedure_versions",
+        "n|tbl|public.procedure_versions",
+        "e|tbl|public.procedure_versions",
+        "n|rel|public.procedure_versions",
+        "n|type|public.procedure_versions",
+        "n|rel|public.procedure_versions_pkey",
+        "n|rel|public.procedure_versions_procedure_id_version_no_unique"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedures"
+      ],
+      "writes": [
+        "s|tbl|public.procedures",
+        "n|tbl|public.procedures",
+        "e|tbl|public.procedures",
+        "n|rel|public.procedures",
+        "n|type|public.procedures",
+        "n|rel|public.procedures_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_drafts"
+      ],
+      "writes": [
+        "s|fk|public.procedure_drafts.procedure_drafts_procedure_id_procedures_id_fkey",
+        "n|fk|public.procedure_drafts.procedure_drafts_procedure_id_procedures_id_fkey",
+        "e|fk|public.procedure_drafts.procedure_drafts_procedure_id_procedures_id_fkey",
+        "n|con|public.procedure_drafts.procedure_drafts_procedure_id_procedures_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedure_drafts",
+        "n|sch|public",
+        "n|tbl|public.procedures",
+        "n|sch|public",
+        "n|col|public.procedure_drafts.procedure_id",
+        "n|col|public.procedures.id",
+        "e|uniqueness|public.procedures.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_drafts"
+      ],
+      "writes": [
+        "s|fk|public.procedure_drafts.procedure_drafts_created_by_user_id_fkey",
+        "n|fk|public.procedure_drafts.procedure_drafts_created_by_user_id_fkey",
+        "e|fk|public.procedure_drafts.procedure_drafts_created_by_user_id_fkey",
+        "n|con|public.procedure_drafts.procedure_drafts_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedure_drafts",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.procedure_drafts.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_drafts"
+      ],
+      "writes": [
+        "s|fk|public.procedure_drafts.procedure_drafts_updated_by_user_id_fkey",
+        "n|fk|public.procedure_drafts.procedure_drafts_updated_by_user_id_fkey",
+        "e|fk|public.procedure_drafts.procedure_drafts_updated_by_user_id_fkey",
+        "n|con|public.procedure_drafts.procedure_drafts_updated_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedure_drafts",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.procedure_drafts.updated_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_versions"
+      ],
+      "writes": [
+        "s|fk|public.procedure_versions.procedure_versions_procedure_id_procedures_id_fkey",
+        "n|fk|public.procedure_versions.procedure_versions_procedure_id_procedures_id_fkey",
+        "e|fk|public.procedure_versions.procedure_versions_procedure_id_procedures_id_fkey",
+        "n|con|public.procedure_versions.procedure_versions_procedure_id_procedures_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedure_versions",
+        "n|sch|public",
+        "n|tbl|public.procedures",
+        "n|sch|public",
+        "n|col|public.procedure_versions.procedure_id",
+        "n|col|public.procedures.id",
+        "e|uniqueness|public.procedures.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedure_versions"
+      ],
+      "writes": [
+        "s|fk|public.procedure_versions.procedure_versions_published_by_user_id_fkey",
+        "n|fk|public.procedure_versions.procedure_versions_published_by_user_id_fkey",
+        "e|fk|public.procedure_versions.procedure_versions_published_by_user_id_fkey",
+        "n|con|public.procedure_versions.procedure_versions_published_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedure_versions",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.procedure_versions.published_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedures"
+      ],
+      "writes": [
+        "s|fk|public.procedures.procedures_created_by_user_id_fkey",
+        "n|fk|public.procedures.procedures_created_by_user_id_fkey",
+        "e|fk|public.procedures.procedures_created_by_user_id_fkey",
+        "n|con|public.procedures.procedures_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedures",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.procedures.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "procedures"
+      ],
+      "writes": [
+        "s|fk|public.procedures.procedures_archived_by_user_id_fkey",
+        "n|fk|public.procedures.procedures_archived_by_user_id_fkey",
+        "e|fk|public.procedures.procedures_archived_by_user_id_fkey",
+        "n|con|public.procedures.procedures_archived_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.procedures",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.procedures.archived_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "procedure_drafts",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "procedure_versions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "procedures",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "procedure_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "base_version_no",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "content",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "revision",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "created_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "updated_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "procedure_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "version_no",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "content",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "change_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "published_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "published_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'active'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "latest_version_no",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "created_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "archived_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "archived_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "procedure_drafts_procedure_id_procedures_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "procedure_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "procedures",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "procedure_drafts_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "procedure_drafts_updated_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "updated_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "procedure_versions_procedure_id_procedures_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "procedure_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "procedures",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "procedure_versions_published_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "published_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_archived_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "archived_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_drafts",
+        "name": "procedure_drafts_pkey",
+        "columns": [
+          "procedure_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "procedure_versions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedure_versions",
+        "name": "procedure_versions_procedure_id_version_no_unique",
+        "nameExplicit": false,
+        "columns": [
+          "procedure_id",
+          "version_no"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_status_check",
+        "value": "status in ('active', 'archived')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_archived_check",
+        "value": "(status = 'archived') = (archived_by is not null and archived_at is not null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "procedures",
+        "name": "procedures_archived_published_check",
+        "value": "status <> 'archived' or latest_version_no is not null",
+        "entityType": "checks"
+      }
+    }
+  ]
+}
