@@ -22,17 +22,28 @@ const schema = z.object({
   INITIAL_ADMIN_NAME: z.string().optional(),
   INITIAL_ADMIN_EMAIL: z.string().optional(),
   INITIAL_ADMIN_PASSWORD: z.string().optional(),
+  // ビルドした画面の置き場。指定したときだけ配信する（開発では Vite が配信する）。
+  WEB_DIST_DIR: z.string().min(1).optional(),
+  NODE_ENV: z.string().optional(),
 });
+
+// .env.example のダミーの秘密鍵。本番でこのまま動かさない。
+const EXAMPLE_SECRET = "dev-secret-dev-secret-dev-secret-0123456789";
 
 export type Config = z.infer<typeof schema>;
 
-function load(): Config {
-  const result = schema.safeParse(process.env);
+export function parseConfig(env: Record<string, string | undefined>): Config {
+  const result = schema.safeParse(env);
   if (!result.success) {
     throw new Error(`環境変数が正しくない：\n${z.prettifyError(result.error)}`);
+  }
+  if (result.data.NODE_ENV === "production" && result.data.BETTER_AUTH_SECRET === EXAMPLE_SECRET) {
+    throw new Error(
+      "BETTER_AUTH_SECRET が .env.example のダミーの値のままです。作り直してください（例：openssl rand -base64 32）",
+    );
   }
   return result.data;
 }
 
-export const config = load();
+export const config = parseConfig(process.env);
 export const appOrigin = new URL(config.APP_URL).origin;

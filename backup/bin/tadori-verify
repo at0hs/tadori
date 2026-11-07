@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# 復元の確認（D-54、operations.md 6.2）。ダンプを使い捨ての PostgreSQL に戻し、主なテーブルの件数を出す。
+#   docker compose run --rm backup tadori-verify [ダンプ]
+# ダンプを省くと、auto/ と manual/ のうち一番新しいものを使う。動いている db には触らない。
+set -euo pipefail
+# shellcheck source=../lib.sh
+source /opt/tadori/lib.sh
+
+dump=$(resolve_dump "${1:-}")
+work=$(mktemp -d)
+chown postgres "$work"
+cleanup() {
+  gosu postgres pg_ctl -D "$work/data" -m immediate stop >/dev/null 2>&1 || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
+
+log "復元の確認を始める：$dump"
+# 一時的な PostgreSQL（ソケットだけで待ち受け、ポートは開かない）。initdb は root では動かない。
+gosu postgres initdb -D "$work/data" -U postgres --auth=trust >/dev/null
+gosu postgres pg_ctl -D "$work/data" -o "-c listen_addresses='' -k $work" -w start >/dev/null
+export PGHOST="$work" PGUSER=postgres PGDATABASE=verify
+unset PGPASSWORD
+createdb verify
+# ダンプは所有者（root）だけが読めるので、root で読んで標準入力から渡す
+if ! pg_restore --exit-on-error --no-owner --no-privileges -d verify <"$dump"; then
+  err "復元に失敗した：$dump"
+  exit 1
+fi
+psql -X -At -F '：' <<'SQL'
+SELECT 'ユーザー', count(*) FROM "user"
+UNION ALL SELECT '手順書', count(*) FROM procedures
+UNION ALL SELECT '版', count(*) FROM procedure_versions
+UNION ALL SELECT '実行', count(*) FROM executions;
+SQL
+log "復元できた（使い捨ての DB は消した）"

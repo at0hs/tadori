@@ -5,6 +5,7 @@ import { db, pool } from "./db/client.ts";
 import { runMigrations } from "./db/migrate.ts";
 import { ensureInitialAdmin } from "./features/users/initial-admin.ts";
 import { logger } from "./lib/logger.ts";
+import { createRootApp } from "./web-static.ts";
 
 // 起動（conventions.md 1章）：マイグレーション → 初期管理者 → 待ち受け
 await runMigrations(db);
@@ -12,7 +13,8 @@ logger.info("マイグレーションを適用した");
 
 await ensureInitialAdmin(config);
 
-const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
+const root = createRootApp({ api: app, distDir: config.WEB_DIST_DIR });
+const server = serve({ fetch: root.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port }, "待ち受けを開始した");
 });
 

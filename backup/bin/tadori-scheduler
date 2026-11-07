@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# backup コンテナの既定の動き（D-19）。BACKUP_TIMES の時刻ごとに backups/auto/ へダンプを取り、
+# BACKUP_KEEP を超えた古いものを消す。設定が誤っていれば理由を出して止まる。
+set -euo pipefail
+# shellcheck source=../lib.sh
+source /opt/tadori/lib.sh
+umask 077
+trap 'log "止める"; exit 0' TERM INT
+
+times_text=$(parse_times "${BACKUP_TIMES:-03:00}")
+mapfile -t times <<<"$times_text"
+keep="${BACKUP_KEEP:-7}"
+validate_keep "$keep"
+auto="$BACKUP_ROOT/auto"
+
+take_backup() {
+  local path
+  if path=$(dump_to "$auto"); then
+    log "バックアップを取った：$path"
+    rotate "$auto" "$keep"
+  else
+    err "バックアップに失敗した（古いバックアップは消していない）"
+  fi
+}
+
+log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
+
+# 直前の時刻にホストが止まっていた（夜に電源を落とす PC など）なら、起動してすぐ取る
+mkdir -p "$auto"
+latest=$(find "$auto" -maxdepth 1 -type f -name 'tadori-*.dump' -printf '%f\n' | sort | tail -n 1)
+if missed_backup "$(date +%s)" "${latest:+$auto/$latest}" "${times[@]}"; then
+  log "直前の時刻のバックアップがないので、今取る"
+  take_backup
+fi
+
+while true; do
+  target=$(($(date +%s) + $(seconds_until_next "$(date +%s)" "${times[@]}")))
+  log "次のバックアップ：$(date -d "@$target" '+%F %T')"
+  # 60秒ごとに時計を見直す（ホストがスリープしている間は sleep が進まないため）。
+  # sleep を裏で動かして wait する（TERM をすぐ受け取るため）。
+  while (($(date +%s) < target)); do
+    remaining=$((target - $(date +%s)))
+    sleep $((remaining < 60 ? remaining : 60)) &
+    wait $!
+  done
+  take_backup
+done

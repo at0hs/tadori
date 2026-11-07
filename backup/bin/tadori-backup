@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# その場でバックアップを取る（operations.md 5.2）。版を上げる前などに使う。
+#   docker compose exec backup tadori-backup
+# backups/manual/ に置く。世代の数に入れず、自動では消さない。
+set -euo pipefail
+# shellcheck source=../lib.sh
+source /opt/tadori/lib.sh
+umask 077
+
+if path=$(dump_to "$BACKUP_ROOT/manual"); then
+  log "バックアップを取った：$path"
+else
+  err "バックアップに失敗した"
+  exit 1
+fi
