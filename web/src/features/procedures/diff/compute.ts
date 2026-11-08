@@ -1,5 +1,5 @@
 import type { ProcedureContent, ProcedureStep, ProcedureVariable } from "@tadori/shared";
-import { diffArrays, diffWords } from "diff";
+import { diffArrays } from "diff";
 
 // 下書きと最新版の差分（F-11、D-66）。API は足さず、画面で計算する。
 // ステップは id、変数は name で突き合わせ、手順と切り戻し手順は別々に比べる。
@@ -50,12 +50,28 @@ export type ProcedureDiff = {
 
 const segmenter = new Intl.Segmenter("ja", { granularity: "word" });
 
-/** 文の差分。same＋del をつなぐと前の文、same＋add をつなぐと後の文になる。 */
+/** 単語の区切りで割る。空白・改行も1つの部品として残す（つなげば元の文に戻る）。 */
+function tokenize(text: string): string[] {
+  return Array.from(segmenter.segment(text), (s) => s.segment);
+}
+
+/**
+ * 文の差分。same＋del をつなぐと前の文、same＋add をつなぐと後の文になる。
+ * jsdiff の diffWords は空白を無視して比べるので使わず、部品の配列を diffArrays で比べる
+ * （コマンドの空白の違いも見せるため）。
+ */
 export function textDiff(before: string, after: string): TextPart[] {
   if (before === after) return before === "" ? [] : [{ kind: "same", text: before }];
-  return diffWords(before, after, { intlSegmenter: segmenter })
-    .filter((c) => c.value !== "")
-    .map((c) => ({ kind: c.added ? "add" : c.removed ? "del" : "same", text: c.value }));
+  const parts: TextPart[] = [];
+  for (const c of diffArrays(tokenize(before), tokenize(after))) {
+    const kind: DiffKind = c.added ? "add" : c.removed ? "del" : "same";
+    const text = c.value.join("");
+    if (text === "") continue;
+    const last = parts.at(-1);
+    if (last?.kind === kind) last.text += text;
+    else parts.push({ kind, text });
+  }
+  return parts;
 }
 
 /** 行に割る。両方が改行で終わるときだけ末尾の改行を1つ落とし、片方だけなら空の行として違いが残る。 */

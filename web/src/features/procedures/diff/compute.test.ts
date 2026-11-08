@@ -53,6 +53,23 @@ describe("textDiff", () => {
     expect(parts[0]).toMatchObject({ kind: "same" });
     expect(parts[0]?.text.startsWith("設定を")).toBe(true);
   });
+  it.each([
+    ["ls -la", "ls -la "],
+    ["a b", "a  b"],
+    ["a\nb", "a\n\nb"],
+    ["東京都の サーバー", "東京都のサーバー"],
+    ["  a", "a"],
+  ])("空白だけの違いも部品に残り、前後の文に戻る（%j → %j）", (a, b) => {
+    const parts = textDiff(a, b);
+    const join = (skip: string) =>
+      parts
+        .filter((p) => p.kind !== skip)
+        .map((p) => p.text)
+        .join("");
+    expect(join("add")).toBe(a);
+    expect(join("del")).toBe(b);
+    expect(isChanged(parts)).toBe(true);
+  });
   it("同じ文なら same が1つ、空同士なら空配列", () => {
     expect(textDiff("同じ", "同じ")).toEqual([{ kind: "same", text: "同じ" }]);
     expect(textDiff("", "")).toEqual([]);
@@ -68,6 +85,13 @@ describe("lineDiff", () => {
     expect(lines.map((l) => l.kind)).toEqual(["del", "add", "same"]);
     expect(lines[1]?.parts.some((p) => p.kind === "add" && p.text.includes(".orig"))).toBe(true);
     expect(lines[2]?.parts).toEqual([{ kind: "same", text: "  /etc/nginx/nginx.conf" }]);
+  });
+  it("行の中の空白だけが違っても、削除の行は前の文、追加の行は後の文になる", () => {
+    const lines = lineDiff("ls -la", "ls  -la");
+    const text = (i: number) => lines[i]?.parts.map((p) => p.text).join("");
+    expect(lines.map((l) => l.kind)).toEqual(["del", "add"]);
+    expect(text(0)).toBe("ls -la");
+    expect(text(1)).toBe("ls  -la");
   });
   it("末尾の改行だけが違っても違いとして出る", () => {
     expect(isChanged(lineDiff("echo ok\n", "echo ok"))).toBe(true);
@@ -175,6 +199,11 @@ describe("diffProcedure：変数・タグ・全体", () => {
   it("同じ文書なら changed は false", () => {
     const c = content({ steps: [A, B], variables: [] });
     expect(diffProcedure(c, structuredClone(c)).changed).toBe(false);
+  });
+  it("概要の空白だけを変えても changed は true", () => {
+    expect(diffProcedure(content({ summary: "a b" }), content({ summary: "a  b" })).changed).toBe(
+      true,
+    );
   });
   it("移動だけでも changed は true", () => {
     expect(diffProcedure(content({ steps: [A, B] }), content({ steps: [B, A] })).changed).toBe(
