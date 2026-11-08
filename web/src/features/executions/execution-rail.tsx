@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { MaskedText } from "./exec-text.tsx";
 import { STEP_STATUS_META } from "./execution-status.tsx";
 import { useUpdateVariables } from "./queries.ts";
+import { type RenderContext, renderPlain } from "./render.ts";
 
 // S-12 の右の列（ui.md 8.4・8.6）：進捗・変数・承認の履歴。
 
@@ -41,9 +42,11 @@ const SEGMENT_CLASS: Record<StepStatus, string> = {
 
 export function ProgressCard({
   detail,
+  ctx,
   nextStepId,
 }: {
   detail: ExecutionDetailResponse;
+  ctx: RenderContext;
   nextStepId: string | undefined;
 }) {
   const main = detail.steps.filter((s) => s.section === "main");
@@ -51,7 +54,10 @@ export function ProgressCard({
   const { done, total } = progressOf(detail.steps);
   const count = (k: StepStatus) => main.filter((s) => s.status === k).length;
   const titles = new Map(
-    [...detail.content.steps, ...detail.content.rollbackSteps].map((s) => [s.id, s.title]),
+    [...detail.content.steps, ...detail.content.rollbackSteps].map((s) => [
+      s.id,
+      renderPlain(s.title, ctx),
+    ]),
   );
   return (
     <section className="rounded-xl border bg-card p-4" aria-label="進捗">
@@ -108,7 +114,9 @@ export function ProgressCard({
               <Undo2 className="size-3.5 shrink-0 text-warning" aria-hidden />
               <span className="truncate">切り戻し手順</span>
               <span className="ml-auto text-xs tabular-nums">
-                {rollback.filter((s) => s.status !== "pending").length} / {rollback.length}
+                {/* 実施した数（完了・失敗）。スキップは実施に数えない（終了の確認と同じ） */}
+                {rollback.filter((s) => s.status === "done" || s.status === "failed").length} /{" "}
+                {rollback.length}
               </span>
             </a>
           </li>

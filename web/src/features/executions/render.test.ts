@@ -1,10 +1,20 @@
 import { SECRET_MASK } from "@tadori/shared";
 import { describe, expect, it } from "vitest";
-import { maskInput, maskReason, renderPieces, textForCopy } from "./render.ts";
+import { maskInput, maskReason, renderPieces, renderPlain, textForCopy } from "./render.ts";
 
 const values = { host: "web01.example.test", port: "22" };
 const base = { values, secretNames: ["admin_password"], reveal: false };
 const secrets = { admin_password: "Dummy-Pass-123" };
+
+describe("renderPlain", () => {
+  it("変数を値に置き換えた文字列（進捗のステップ一覧の題名など）", () => {
+    expect(renderPlain("#{host} に接続する", base)).toBe("web01.example.test に接続する");
+  });
+
+  it("秘密変数は、表示しないときはマスクする", () => {
+    expect(renderPlain("pw #{admin_password}", { ...base, secrets })).toBe(`pw ${SECRET_MASK}`);
+  });
+});
 
 describe("textForCopy", () => {
   it("F-04 AC: コピーでは変数が値に置き換わる", () => {

@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { ExecText, MaskedText } from "./exec-text.tsx";
 import { STEP_STATUS_META, StepStatusText } from "./execution-status.tsx";
 import { useAddComment, useAddEvidence } from "./queries.ts";
-import { maskInput, type RenderContext, renderPieces, textForCopy } from "./render.ts";
+import { maskInput, type RenderContext, renderPieces, renderPlain, textForCopy } from "./render.ts";
 
 // S-12 のステップのカード（ui.md 8.5）。
 
@@ -76,12 +76,6 @@ const BORDER_CLASS: Record<StepStatus, string> = {
   skipped: "before:bg-muted-foreground/40",
   failed: "before:bg-destructive",
 };
-
-/** Markdown に流す、置換した文字列（色付けはしない。秘密変数はマスクの規則どおり） */
-const plainText = (text: string, ctx: RenderContext) =>
-  renderPieces(text, ctx)
-    .map((p) => p.text)
-    .join("");
 
 /** 「手順 3」「切り戻し 1」 */
 export const stepLabel = (section: ExecutionStep["section"], index: number) =>
@@ -169,7 +163,7 @@ export function StepCard({
                 label={label}
                 evidenceMissing={evidenceMissing}
                 env={env}
-                title={plainText(def.title, env.ctx)}
+                title={renderPlain(def.title, env.ctx)}
               />
             ) : (
               <StepStatusText status={step.status} />
@@ -188,7 +182,7 @@ export function StepCard({
           )}
           {def.description && (
             <MarkdownText
-              text={plainText(def.description, env.ctx)}
+              text={renderPlain(def.description, env.ctx)}
               className="mt-2 text-muted-foreground"
             />
           )}
