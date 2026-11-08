@@ -7,6 +7,7 @@ import { ExecutionList, procedureTitleOf } from "@/features/executions/execution
 import { EXECUTION_LIST_FILTERS, EXECUTION_SORTS } from "@/features/executions/filter.ts";
 import { executionListQueryOptions } from "@/features/executions/queries.ts";
 import { PROCEDURES_CRUMB } from "@/features/procedures/procedure-detail.tsx";
+import { idSearchParam } from "@/lib/search.ts";
 
 const DEFAULTS = { card: "all", status: [] as ExecutionStatus[], sort: "updated" } as const;
 
@@ -17,8 +18,8 @@ export const Route = createFileRoute("/_app/executions/")({
     card: z.enum(EXECUTION_LIST_FILTERS).default(DEFAULTS.card).catch(DEFAULTS.card),
     status: z.array(z.enum(EXECUTION_STATUSES)).default([]).catch([]),
     approval: z.enum(APPROVAL_STATUSES).optional().catch(undefined),
-    procedure: z.string().optional().catch(undefined),
-    executor: z.string().optional().catch(undefined),
+    procedure: idSearchParam,
+    executor: idSearchParam,
     sort: z.enum(EXECUTION_SORTS).default(DEFAULTS.sort).catch(DEFAULTS.sort),
   }),
   search: { middlewares: [stripSearchParams(DEFAULTS)] },
