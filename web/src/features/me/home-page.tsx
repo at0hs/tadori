@@ -81,7 +81,10 @@ const ORDER: HomeSectionKey[] = ["myExecutions", "pendingApprovals", "drafts"];
 
 export function HomePage() {
   const me = useMe();
-  const { data, error, isPending } = useQuery(homeQueryOptions);
+  const { data: fetched, error, isFetchedAfterMount } = useQuery(homeQueryOptions);
+  // 前に開いたときの内容（キャッシュ）は出さない。承認した・終了した実行などが一瞬残って見えるため、
+  // 開くたびに取り直した結果が来るまで骨組みを出す
+  const data = isFetchedAfterMount ? fetched : undefined;
 
   // 「すべて見る」の行き先（ui.md 9.2）
   const allLinks: Record<HomeSectionKey, LinkProps> = {
@@ -100,7 +103,7 @@ export function HomePage() {
         <div className="mt-5">
           <ErrorBanner error={error} />
         </div>
-      ) : keys.length === 0 && !isPending ? (
+      ) : keys.length === 0 && data ? (
         <div className="mt-5 rounded-xl border bg-card">
           <EmptyState
             icon={House}

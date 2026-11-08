@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMe } from "@/features/me/queries.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { cn } from "@/lib/utils";
 import { ApprovalBadge, Avatar, ExecutionStatusLabel } from "./execution-status.tsx";
@@ -91,6 +92,7 @@ export function ExecutionList({
   filter: ExecutionFilter;
   onFilterChange: (next: Partial<ExecutionFilter>) => void;
 }) {
+  const me = useMe();
   const { data: list, error, isPending } = useQuery(executionListQueryOptions);
   const counts = list ? executionCounts(list, filter) : undefined;
   const shown = list ? filterExecutions(list, filter) : [];
@@ -107,7 +109,10 @@ export function ExecutionList({
     filter.procedure !== undefined ||
     filter.executor !== undefined;
   const procedureTitle = filter.procedure && procedureTitleOf(list, filter.procedure);
-  const executorName = filter.executor && executorNameOf(list, filter.executor);
+  // 自分の実行がまだ1件もなくても（ホームの「すべて見る」から来たとき）、チップに名前を出す
+  const executorName =
+    filter.executor &&
+    (executorNameOf(list, filter.executor) ?? (filter.executor === me.id ? me.name : undefined));
 
   return (
     <>
