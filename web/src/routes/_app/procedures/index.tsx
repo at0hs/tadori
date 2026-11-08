@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { useMe } from "@/features/me/queries.ts";
 import { PROCEDURE_SORTS, PROCEDURE_STATUS_FILTERS } from "@/features/procedures/filter.ts";
 import { ProcedureList } from "@/features/procedures/procedure-list.tsx";
+import { stringListSearchParam } from "@/lib/search.ts";
 
 const DEFAULTS = { q: "", tag: [] as string[], status: "all", sort: "published" } as const;
 
@@ -13,7 +14,7 @@ const DEFAULTS = { q: "", tag: [] as string[], status: "all", sort: "published" 
 export const Route = createFileRoute("/_app/procedures/")({
   validateSearch: z.object({
     q: z.string().default(DEFAULTS.q).catch(DEFAULTS.q),
-    tag: z.array(z.string()).default([]).catch([]),
+    tag: stringListSearchParam,
     status: z.enum(PROCEDURE_STATUS_FILTERS).default(DEFAULTS.status).catch(DEFAULTS.status),
     sort: z.enum(PROCEDURE_SORTS).default(DEFAULTS.sort).catch(DEFAULTS.sort),
   }),
