@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 復元（operations.md 6.1）。DB を作り直してからダンプを戻す。ダンプの後の変更はすべて失われる。
+# 復元（operations.md 6.1）。ダンプを別の DB に戻してから、今の DB と入れ替える。ダンプの後の変更はすべて失われる。
 #   docker compose stop app
 #   docker compose exec backup tadori-restore <ダンプ> [--yes]
 #   docker compose start app
@@ -27,9 +27,21 @@ if ! check_dump "$dump"; then
   exit 1
 fi
 
-# app などがつないでいる間は戻さない（書き込みと混ざる）
-others=$(psql -X -At -d postgres -c \
-  "SELECT count(*) FROM pg_stat_activity WHERE datname = '$PGDATABASE' AND pid <> pg_backend_pid()")
+umask 077
+# 自動・手動のバックアップと重ならないようにする（その pg_dump を app の接続と取り違えないよう、数える前に取る）
+acquire_lock
+
+work_db="${PGDATABASE}_restore"
+sql() { PGOPTIONS='-c client_min_messages=warning' psql -X -q -At -d postgres -v ON_ERROR_STOP=1 "$@"; }
+# DB へのクライアントの接続の数。autovacuum などは数えない（DROP DATABASE が自分で止める）。
+count_clients() {
+  sql -c "SELECT count(*) FROM pg_stat_activity
+    WHERE datname = '$1' AND backend_type = 'client backend' AND pid <> pg_backend_pid()"
+}
+
+# app などがつないでいる間は戻さない。確認の入力の前に断る。
+# ただし app の接続は空けば閉じるので、ここで 0 件でも app が止まっているとは限らない。入れ替えの直前にもう一度数える。
+others=$(count_clients "$PGDATABASE")
 if ((others > 0)); then
   err "DB に $others 件の接続があります。app を止めてから実行してください（docker compose stop app）"
   exit 1
@@ -48,7 +60,6 @@ if ! $yes; then
   fi
 fi
 
-umask 077
 before=""
 if $backup_before; then
   if ! before=$(dump_to "$BACKUP_ROOT/manual"); then
@@ -58,15 +69,34 @@ if $backup_before; then
   log "戻す前の今の DB を取った：$before"
 fi
 
+# 1. 別の DB（app は接続しない名前）に戻す。前に止められて残っていれば消してから作る。
 log "復元を始める：$dump"
-psql -X -q -d postgres -v ON_ERROR_STOP=1 \
-  -c "DROP DATABASE \"$PGDATABASE\"" \
-  -c "CREATE DATABASE \"$PGDATABASE\" OWNER \"$PGUSER\""
-if ! pg_restore --exit-on-error --no-owner -d "$PGDATABASE" <"$dump"; then
-  err "復元に失敗した。DB は途中の状態になっている"
-  if [[ -n "$before" ]]; then
-    err "戻す前の状態には、tadori-restore $before --yes で戻せる"
-  fi
+sql -c "DROP DATABASE IF EXISTS \"$work_db\"" -c "CREATE DATABASE \"$work_db\" OWNER \"$PGUSER\""
+if ! pg_restore --exit-on-error --no-owner -d "$work_db" <"$dump"; then
+  sql -c "DROP DATABASE IF EXISTS \"$work_db\""
+  err "復元に失敗した。今の DB には触っていない"
   exit 1
 fi
+
+# 2. 今の DB への新しい接続を断ってから、残っている接続を数える。0 件なら消して、戻した DB の名前を変える。
+#    途中でやめるときは、今の DB への接続を許し直し、戻した DB を消す（今の DB はそのまま）。
+abort_swap() {
+  sql -c "ALTER DATABASE \"$PGDATABASE\" ALLOW_CONNECTIONS true" || true
+  sql -c "DROP DATABASE IF EXISTS \"$work_db\"" || true
+}
+if [[ -n "$(sql -c "SELECT 1 FROM pg_database WHERE datname = '$PGDATABASE'")" ]]; then
+  trap abort_swap EXIT
+  sql -c "ALTER DATABASE \"$PGDATABASE\" ALLOW_CONNECTIONS false"
+  others=$(count_clients "$PGDATABASE")
+  if ((others > 0)); then
+    err "DB に $others 件の接続があるので、入れ替えずにやめた。今の DB はそのまま。app を止めてからやり直してください（docker compose stop app）"
+    exit 1
+  fi
+  sql -c "DROP DATABASE \"$PGDATABASE\""
+  trap - EXIT
+fi
+sql -c "ALTER DATABASE \"$work_db\" RENAME TO \"$PGDATABASE\""
 log "復元した。app を起動してください（docker compose start app）"
+if [[ -n "$before" ]]; then
+  log "戻す前の状態には、tadori-restore $before --yes で戻せる"
+fi
