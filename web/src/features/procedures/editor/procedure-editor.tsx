@@ -88,11 +88,14 @@ export function ProcedureEditor({
   procedureId,
   initial,
   notice,
+  publishCheck,
 }: {
   mode: "new" | "edit";
   procedureId?: string;
   initial: DraftResponse | null;
   notice?: string;
+  /** 開いてすぐに公開時の検証を当て、エラーの場所を示す（S-17 から移ってきたとき） */
+  publishCheck?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -148,6 +151,17 @@ export function ProcedureEditor({
   useEffect(() => {
     if (notice) window.scrollTo({ top: 0 });
   }, [notice]);
+
+  // 最初の描画の後に1回だけ。エラーがなければ何もしない
+  const publishChecked = useRef(false);
+  useEffect(() => {
+    if (!publishCheck || publishChecked.current || !initial) return;
+    publishChecked.current = true;
+    const errors = findPublishErrors(initial.content);
+    if (errors.length > 0) {
+      showErrors("公開できませんでした。次の場所を直してください", errors, initial.content);
+    }
+  });
 
   function showErrors(title: string, errors: FieldError[], content: ProcedureContent) {
     for (const e of errors) {

@@ -1,4 +1,5 @@
-import { Send, Trash2, TriangleAlert } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ExternalLink, GitCompare, Send, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { ErrorBanner } from "@/components/error-banner.tsx";
 import {
@@ -53,6 +54,8 @@ export function PublishDialog({
   pending,
   error,
   onPublish,
+  description = "画面の内容を保存して公開します。公開した版は変更できません。",
+  summary,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +63,9 @@ export function PublishDialog({
   pending: boolean;
   error: unknown;
   onPublish: (changeReason: string) => void;
+  description?: string;
+  /** 最新版からの変更の要約（F-11、ui.md 10.4）。text が空なら枠を出さない */
+  summary?: { text: string; diffLink?: { procedureId: string } } | null;
 }) {
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
@@ -84,8 +90,28 @@ export function PublishDialog({
           }}
         >
           <DialogHead icon={Send} tone="primary" title={`v${nextVersionNo} として公開しますか？`}>
-            画面の内容を保存して公開します。公開した版は変更できません。
+            {description}
           </DialogHead>
+          {summary && summary.text !== "" && (
+            <div className="rounded-lg border px-4 py-3 text-sm">
+              <div className="flex items-center gap-2 font-medium">
+                <GitCompare className="size-4 text-muted-foreground" aria-hidden />v
+                {nextVersionNo - 1} からの変更
+                {summary.diffLink && (
+                  <Link
+                    to="/procedures/$procedureId/draft/diff"
+                    params={{ procedureId: summary.diffLink.procedureId }}
+                    target="_blank"
+                    className="ml-auto flex items-center gap-1 text-xs font-normal text-primary hover:underline"
+                  >
+                    変更点を見る
+                    <ExternalLink className="size-3" aria-hidden />
+                  </Link>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{summary.text}</p>
+            </div>
+          )}
           <div className="grid gap-1.5">
             <label htmlFor="change-reason" className="text-sm font-medium">
               変更理由 <span className="text-xs font-normal text-destructive">必須</span>
