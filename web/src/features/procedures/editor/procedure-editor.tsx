@@ -11,7 +11,16 @@ import {
 } from "@tadori/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { Ellipsis, ListOrdered, Save, Send, Trash2, Undo2 } from "lucide-react";
+import {
+  Ellipsis,
+  ExternalLink,
+  GitCompare,
+  ListOrdered,
+  Save,
+  Send,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { type FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
 import { ErrorBanner } from "@/components/error-banner.tsx";
@@ -27,10 +36,13 @@ import { useMe } from "@/features/me/queries.ts";
 import { type FieldError, isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { holdLoginRedirect } from "@/lib/query.ts";
+import { diffProcedure } from "../diff/compute.ts";
+import { summarizeDiff, summaryText } from "../diff/summary.ts";
 import { PROCEDURES_CRUMB } from "../procedure-detail.tsx";
 import {
   draftQueryOptions,
   procedureListQueryOptions,
+  procedureQueryOptions,
   useCreateProcedure,
   useDiscardDraft,
   usePublish,
@@ -124,6 +136,11 @@ export function ProcedureEditor({
   const [publishOpen, setPublishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const [publishSummary, setPublishSummary] = useState<string | null>(null);
+  // 公開済みの手順書だけ、公開のダイアログに最新版からの変更の要約を出す
+  const hasVersion = mode === "edit" && meta.baseVersionNo !== null;
+  const { data: detail } = useQuery({ ...procedureQueryOptions(id), enabled: hasVersion });
+  const latest = hasVersion ? (detail?.latestVersion ?? null) : null;
 
   const create = useCreateProcedure();
   const save = useSaveDraft(id);
@@ -249,6 +266,10 @@ export function ProcedureEditor({
     }
     publish.reset();
     create.reset();
+    // 最新版からの変更の要約は、画面の今の内容と比べる（保存の前に出すため、ui.md 10.4）
+    setPublishSummary(
+      latest ? summaryText(summarizeDiff(diffProcedure(latest.content, content))) : null,
+    );
     setPublishOpen(true);
   });
 
@@ -441,6 +462,21 @@ export function ProcedureEditor({
                     </span>
                   </>
                 )}
+                {meta.status === "editing" && meta.baseVersionNo !== null && (
+                  <>
+                    <span>・</span>
+                    <Link
+                      to="/procedures/$procedureId/draft/diff"
+                      params={{ procedureId: id }}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                    >
+                      <GitCompare className="size-3" aria-hidden />
+                      保存した下書きと v{meta.baseVersionNo} の変更点
+                      <ExternalLink className="size-3" aria-hidden />
+                    </Link>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -515,6 +551,14 @@ export function ProcedureEditor({
         pending={create.isPending || publish.isPending}
         error={publish.error ?? create.error}
         onPublish={onPublish}
+        summary={
+          publishSummary === null
+            ? null
+            : {
+                text: publishSummary,
+                diffLink: meta.status === "editing" ? { procedureId: id } : undefined,
+              }
+        }
       />
       <DiscardDialog
         open={discardOpen}
