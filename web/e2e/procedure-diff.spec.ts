@@ -166,6 +166,32 @@ test("S-17 を開いた後に下書きが保存し直されたら、公開せず
   await expect(page.getByRole("button", { name: "公開する" })).toBeEnabled();
 });
 
+test("S-17 を開いている間にほかで公開されても、フォーカスで最新版だけを取り直して比べ直さない", async ({
+  page,
+}) => {
+  const a = step("確かめる");
+  const draft = content("差分の確認 8", [{ ...a, title: "よく確かめる" }]);
+  const { id, revision } = await publishedWithDraft(page, content("差分の確認 8", [a]), draft);
+  await page.goto(`/procedures/${id}/draft/diff`);
+  const steps = page.getByRole("region", { name: "手順", exact: true });
+  await expect(steps.getByText("変更", { exact: true })).toBeVisible();
+
+  // ほかの画面で、この下書きが公開された
+  const published = await page.request.post(`/api/procedures/${id}/publish`, {
+    headers,
+    data: { content: draft, lock: { revision }, changeReason: "ほかで公開" },
+  });
+  expect(published.ok()).toBe(true);
+
+  // タブに戻っても、開いたときの最新版と下書きの比べ方のまま（「変更はありません」にならない）
+  await page.evaluate("window.dispatchEvent(new Event('visibilitychange'))");
+  await page.waitForTimeout(500);
+  await expect(page.getByText("変更はありません")).toHaveCount(0);
+  await expect(
+    page.getByText("公開済みの v1 と、保存した下書きを比べています。", { exact: false }),
+  ).toBeVisible();
+});
+
 test("公開時の検証に通らない下書きは、S-09 に移ってエラーを出す", async ({ page }) => {
   const a = step("確かめる");
   const { id } = await publishedWithDraft(

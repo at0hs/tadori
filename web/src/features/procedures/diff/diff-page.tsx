@@ -121,7 +121,14 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
   const me = useMe();
   const canEdit = can(me.role, "editProcedure");
   const canPublish = can(me.role, "publishProcedure");
-  const detail = useQuery({ ...procedureQueryOptions(procedureId), enabled: canEdit });
+  // 比べる2つは開いたときのまま固定する。下書き（draftQueryOptions）はフォーカスで取り直さないので、
+  // 最新版だけが新しくなって比べ方がずれないよう、こちらも「読み込み直す」でだけ取り直す
+  const detail = useQuery({
+    ...procedureQueryOptions(procedureId),
+    enabled: canEdit,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
   const draft = useQuery({ ...draftQueryOptions(procedureId), enabled: canEdit });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
