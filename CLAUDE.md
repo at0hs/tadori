@@ -55,7 +55,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/src/config.ts`：環境変数の検証（`parseConfig`）。`NODE_ENV=production` で `.env.example` のダミーの秘密鍵なら起動しない。
 - `server/src/app.ts`：Hono のアプリ。ミドルウェアは**登録した順に効く**。リクエスト ID と IP → CSRF → `/api/auth/*` → `requireSession` → `/api/me` → `requirePasswordChanged` → 機能のルートの順で、機能のルートは一番下に足す。
 - `server/src/auth/`：Better Auth を使うのはここだけ。入口の許可リスト（`routes.ts`）、IP の付け直し（`client-ip.ts`、D-60）、セッションの取得（`session.ts`）、ユーザーの作成・無効化・パスワードの設定・復旧（`users.ts`）。ログインの操作ログは `auth.ts` の after フックで出す。
-- `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requireRole`）。
+- `server/src/middleware/`：リクエスト ID と IP（`request-context.ts`）、CSRF（`csrf.ts`、D-61）、ログインとパスワード変更の確認（`session.ts`）、ロールの確認（`role.ts` の `requirePermission`。必要な最も低いロールは shared の `PERMISSIONS`）。
 - `server/src/features/users/`：管理者の API（`routes.ts`・`service.ts`）、初期管理者、復旧（`recover.ts`。入口は `server/src/cli/recover-admin.ts`）。
 - `server/src/features/procedures/`：手順書・版・下書きの API。読み込み（`read-service.ts`）と書き込み（`write-service.ts`。楽観ロックの照合は `checkLock`）、共有の読み出し（`queries.ts`）。
 - `server/src/features/executions/`：実行の API。開始（`start-service.ts`）、詳細と一覧（`read-service.ts`）、変数・ステップの状態・コメント・エビデンス（`record-service.ts`）、終了と中止（`end-service.ts`）、行のロック・本人の確認・変数の照合・管理者が中止できるかの判定（`queries.ts`）、Excel 出力（`export-service.ts`。ブックの組み立ては `export-workbook.ts` で、ExcelJS を使うのはここだけ（D-63）。ファイル名と日時は `export-format.ts`）。ExcelJS の依存の uuid は `pnpm-workspace.yaml` の `overrides` で上げている。
@@ -65,7 +65,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `server/test/`：テストの環境変数・DB の準備・補助関数。手順書のダミーの文書と、DB に直接入れる補助は `procedures.ts`。出力した .xlsx の読み直しは `xlsx.ts` の `readXlsx`。
 - `shared/src/`：エラーコード（`errors/`）、Zod スキーマ（`schemas/`。手順書の文書 `ProcedureContent` と公開時の検証 `findPublishErrors` は `procedures.ts`、実行の約束事と終了の判定 `finishOutcome`・進捗 `progressOf` は `executions.ts`）、`#{name}` の解析（`variables/parse.ts`）と置換・マスク（`variables/substitute.ts` の `splitVariables`・`maskSecrets`、サーバーの出力用の `substituteText`）、UUID v7 の ID（`ids.ts` の `newId`）。
 - `web/src/routes/`：TanStack Router のルート（ファイルの並びが URL）。`_app.tsx` がログインの確認（未ログインは `/login?redirect=…`、パスワード変更が必要なら `/account/password`）と共通の枠。`routeTree.gen.ts` は Vite のプラグインが作る生成物（コミットする。Biome の対象外）。
-- `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名（`roles.ts`）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
+- `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名・説明・アイコン（`roles.ts`。できるかどうかの判定は shared の `can` を使う）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
 - `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
 - `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
 - `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）、Excel のダウンロードと「Excel に出力」の置き場所（`download.ts`）。
@@ -86,7 +86,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **ルートの検証**は `lib/validate.ts` の `jsonBody(schema)`・`pathParams(schema)` を使う（JSON でなければ 415、合わなければ 400 と欄ごとの `errors`。パスが合わなければ 404）。hono/validator を通すので、Hono RPC で画面に入力の型が伝わる。
 - **API のテスト**は `test/helpers.ts` の `request()` で呼ぶ。状態を変えるリクエストに `Origin` を付け（付けないと CSRF で 403）、接続元の IP をソケットの代わりに渡す（付けないとログインの回数制限が共有される）。操作ログは `captureOperationLogs()`、D-33 の食い違いは `adminColumnMismatches()` で確かめる。
 - **テストの DB**：server のテストはテスト用 DB を1つ共有し、ファイルを並べて流さない。Better Auth はアプリのトランザクションに参加できないので、認証を使うテストは `resetDb()` でテーブルを空にして分ける（ロールバックによる分離は、サービスのテストを書くときに用意する）。
-- **E2E の注意**：`test.use({ storageState })` は `browser.newContext()` にも引き継がれる。別の人として操作するときは `e2e/helpers.ts` の `freshPage()` を使う。`e2e/` の tsconfig には DOM の型がないので、`page.evaluate` でブラウザの API を使うときは式を文字列で渡す（例：クリップボード）。`setupAuthor` の作成者（author1・author2）は `procedures.spec.ts` が作るので、ほかのファイルでは別のユーザー名で作る（`executions.spec.ts` は runner1、`approvals.spec.ts` は apprunner・checker1、`home.spec.ts` は homerunner・homechecker。`approvals.spec.ts` は管理者に承認者ロールを一時的に付けて外す）。Better Auth はパスワードの変更を IP ごとに 10 秒 3 回までにしているので、1つのファイルで新しいユーザーを作るのは2人までにし、初回のパスワード変更は `firstPasswordChange()`（断られたら 10 秒待ってやり直す）を使う。入力欄は `getByLabel(…, { exact: true })` で探す（検索欄などと部分一致する）。ログインは IP ごとに 60 秒 20 回の制限があるので、管理者のログインは使い回す。
+- **E2E の注意**：`test.use({ storageState })` は `browser.newContext()` にも引き継がれる。別の人として操作するときは `e2e/helpers.ts` の `freshPage()` を使う。`e2e/` の tsconfig には DOM の型がないので、`page.evaluate` でブラウザの API を使うときは式を文字列で渡す（例：クリップボード）。`setupAuthor` の author1・author2（ロールは承認者。公開もするため）は `procedures.spec.ts` が作るので、ほかのファイルでは別のユーザー名で作る（`executions.spec.ts` は runner1、`approvals.spec.ts` は apprunner・checker1、`home.spec.ts` は homerunner・homechecker）。作業者は公開できないので、作業者が作った下書きは管理者が公開する。別のロールの人が要るときは、新しいユーザーを作らず、管理者の API（`PUT /api/admin/users/{id}/role`）で一時的にロールを変えて `finally` で戻す（`procedures.spec.ts` の `asAuthor2With`）。Better Auth はパスワードの変更を IP ごとに 10 秒 3 回までにしているので、1つのファイルで新しいユーザーを作るのは2人までにし、初回のパスワード変更は `firstPasswordChange()`（断られたら 10 秒待ってやり直す）を使う。入力欄は `getByLabel(…, { exact: true })` で探す（検索欄などと部分一致する）。ログインは IP ごとに 60 秒 20 回の制限があるので、管理者のログインは使い回す。
 - **pnpm は出てから24時間たっていない版を入れない**（`minimumReleaseAge`）。新しすぎる版を指定すると、pnpm が `pnpm-workspace.yaml` に `minimumReleaseAgeExclude` を自動で書き足すことがある。これはコミットせず、24時間待つか1つ前の版にする。
 
 ## 画面の実装ルール
@@ -113,9 +113,9 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - **下書きの楽観ロック**：保存・公開は、読み込んだ時点の `revision` と照合する。下書きがない状態から始めた場合は、「今も下書きがない」ことに加えて、読み込んだ版数が今の最新の版数と同じことも確かめる（D-55）。どちらも違えば上書きせずにエラーにする。
 - **変数**：`#{変数名}` 形式で、ステップのタイトル・説明・コマンド・確認方法の中で置換する（`##{変数名}` はエスケープ、規則に合わない `#{...}` はそのままの文字列）。最初のステップの状態を更新した後は値を変更できない。未定義の変数を参照していると公開時にエラーにする。
 - **秘密変数**：値はサーバーに送らず、DB にも保存しない（ブラウザの中だけで保持し、再開時に入力し直す）。実行者が入力するテキスト（エビデンス・コメント・スキップの理由・中止の理由・再依頼のコメント）は、送る前にブラウザ側で秘密変数の値をマスクする（D-02、D-56）。画面ではマスク表示し、Excel 出力・操作ログ・実行記録の表示に平文で出さない（AC の検証対象）。
-- **応答に含めてよい情報**：下書き・未公開の手順書は作成者ロールの人にだけ返す。記録の中の他のユーザーは ID と名前だけを返す。その他の決まりは `../tadori-docs/design/api.md` の 3章に従い、テストで確かめる（D-49）。
+- **応答に含めてよい情報**：下書き・未公開の手順書は作業者以上のロールの人にだけ返す。記録の中の他のユーザーは ID と名前だけを返す。その他の決まりは `../tadori-docs/design/api.md` の 3章に従い、テストで確かめる（D-49）。
 - **実行の終了**：ステップの状態は実行中なら自由に変更でき、すべて履歴に残す。実行は「終了する」操作で明示的に終わらせ、自動では終了しない。完了条件と進捗には「手順」のステップだけを数え（進捗の完了数には完了とスキップを数える、D-57）、切り戻しのステップを1つでも実施したら異常終了にする。
-- **認可**：ロール（管理者／作成者／実行者／承認者／閲覧者。複数付与可、システム全体で共通）は画面だけでなく API でも検証する。実行への操作（ステップの状態の変更、追記、終了、中止、再依頼など）ができるのは「本人」（その実行を開始し、操作の時点で実行者ロールを持つ人、D-35）だけ。ロールはリクエストのたびに DB から読む。
+- **認可**：ロールは1人1つの4段階（管理者 ＞ 承認者 ＞ 作業者 ＞ 閲覧者、システム全体で共通、D-64）で、上のロールは下のロールの権限をすべて持つ。`user_roles` の行がない人は閲覧者。操作ごとに必要な最も低いロールは `shared/src/schemas/roles.ts` の `PERMISSIONS` の1か所だけに書き、サーバーも画面も `can(role, permission)` で判定する（`role === "admin"` のような比較を書かない）。公開とアーカイブは承認者以上（D-65）。画面だけでなく API でも検証する。実行への操作（ステップの状態の変更、追記、終了、中止、再依頼など）ができるのは「本人」（その実行を開始し、操作の時点で作業者以上のロールを持つ人、D-35）だけ。ロールはリクエストのたびに DB から読む。管理者は自分のロールを変えられない（D-38）。
 - **職務分離**：自分が実行者である実行は承認・差し戻しできない。承認済みの実行記録は誰も変更できない。差し戻し後に追記できるのはコメントとエビデンスだけで、ステップの状態は変更できない。
 - **ユーザーは物理削除しない**（無効化のみ）。記録との紐づけを保つため。
 - **ログの二層構造**：操作ログ（F-10）は JSON 構造化ログとして標準出力へ出す（DB には保存しない）。ステップ単位の「誰が・いつ・何から何に変えたか」は実行記録として DB に保存する。
