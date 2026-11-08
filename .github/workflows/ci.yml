@@ -66,8 +66,36 @@ jobs:
         run: curl -fsS http://localhost:3000/executions/x | grep -q 'id="root"'
       - name: バックアップのスクリプトのテスト
         run: docker compose run --rm -T backup bash /opt/tadori/test/lib.test.sh
-      - run: docker compose exec -T backup tadori-backup
+      - name: その場でバックアップを取る
+        run: |
+          docker compose exec -T backup tadori-backup | tee backup.txt
+          sed -n 's/.*バックアップを取った：\/backups\///p' backup.txt > dump-path.txt
+          test -s dump-path.txt
       - name: 復元の確認（初期管理者の1人が戻る）
         run: docker compose run --rm -T backup tadori-verify | tee verify.txt && grep -qx 'ユーザー：1' verify.txt
+      # バックアップの後の変更が復元で消えることを、目印のテーブルで確かめる（operations.md 6.1）
+      - name: 目印のテーブルを作る
+        run: docker compose exec -T db psql -U tadori -d tadori -v ON_ERROR_STOP=1 -c 'CREATE TABLE ci_marker ()'
+      # 待ち受け中の app は接続を閉じているので、わざと接続を開いておく
+      - name: DB に接続がある間は復元を断る
+        run: |
+          docker compose exec -d db psql -U tadori -d tadori -c 'SELECT pg_sleep(20)'
+          sleep 2
+          if docker compose exec -T backup tadori-restore "$(cat dump-path.txt)" --yes; then
+            echo "断られなかった"; exit 1
+          fi
+          test "$(docker compose exec -T db psql -U tadori -d tadori -At -c "SELECT to_regclass('ci_marker') IS NOT NULL")" = t
+          docker compose exec -T db psql -U tadori -d postgres -c \
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query = 'SELECT pg_sleep(20)'"
+      - name: 復元する
+        run: |
+          docker compose stop app
+          docker compose exec -T backup tadori-restore "$(cat dump-path.txt)" --yes
+          docker compose start app
+      - name: 目印のテーブルが消えている
+        run: |
+          test "$(docker compose exec -T db psql -U tadori -d tadori -At -c "SELECT to_regclass('ci_marker') IS NULL")" = t
+      - name: 復元した後も app が動く
+        run: docker compose up -d --wait && curl -fsS http://localhost:3000/api/health
       - if: failure()
         run: docker compose logs

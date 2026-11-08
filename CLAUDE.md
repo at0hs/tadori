@@ -45,7 +45,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 | 本番の構成を起動 | `docker compose up -d --build --wait`（`.env` に本番の値。手元で試すなら `-p <別の名前> --env-file <別の .env>` で開発の DB と分ける） |
 | バックアップのスクリプトのテスト | `docker compose run --rm -T backup bash /opt/tadori/test/lib.test.sh`（Git Bash では `MSYS_NO_PATHCONV=1` を付ける） |
 
-CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルド・E2E を流す。別のジョブ（`compose`）で本番の構成を起動し、バックアップを取って復元の確認まで流す。
+CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome ci`・テスト・ビルド・E2E を流す。別のジョブ（`compose`）で本番の構成を起動し、バックアップを取って、復元の確認（`tadori-verify`）と実際の復元（`tadori-restore`）まで流す。
 
 ## 構成
 
@@ -72,7 +72,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。
 - `compose.yaml`・`Dockerfile`：本番用の app・db・backup。app のイメージは2段ビルドで、Node が `node_modules` の中の `.ts` を動かさないため、`pnpm deploy` を使わずワークスペースのシンボリックリンクのまま入れる。Node 26 には corepack がないので、pnpm は `packageManager` の版を npm で入れる。
-- `backup/`：backup のイメージ（`postgres:18` ＋スクリプト）。共通の関数は `lib.sh`（テストは `test/lib.test.sh`）、コマンドは `bin/` の `tadori-scheduler`（既定の動き）・`tadori-backup`・`tadori-verify`・`tadori-restore`。`ENTRYPOINT` を使わないのは、`docker compose run --rm backup <コマンド>` で差し替えるため。スクリプトは LF でないと動かない（`.gitattributes`）。
+- `backup/`：backup のイメージ（`postgres:18` ＋スクリプト）。共通の関数は `lib.sh`（テストは `test/lib.test.sh`）、コマンドは `bin/` の `tadori-scheduler`（既定の動き）・`tadori-backup`・`tadori-verify`・`tadori-restore`。`ENTRYPOINT` を使わないのは、`docker compose run --rm backup <コマンド>` で差し替えるため。バックアップと復元は `/backups/.lock` を `flock` で取り合い、同時には走らない。復元は `tadori_restore` に戻してから今の DB と入れ替える（戻しかけの DB に app が触れず、失敗しても今の DB が残る）。スクリプトは LF でないと動かない（`.gitattributes`）。
 
 ## 間違えやすい点
 
