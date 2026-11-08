@@ -1,18 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type CreateUserRequest, createUserRequestSchema, ROLES } from "@tadori/shared";
+import { type CreateUserRequest, createUserRequestSchema } from "@tadori/shared";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { ErrorBanner } from "@/components/error-banner.tsx";
 import { Field } from "@/components/field.tsx";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/api.ts";
-import { ROLE_LABELS } from "@/lib/roles.ts";
 import { useCreateUser } from "./queries.ts";
+import { RoleRadio } from "./role-radio.tsx";
 
-const FIELDS = ["name", "username", "email", "password", "roles"] as const;
+const FIELDS = ["name", "username", "email", "password", "role"] as const;
 type FieldName = (typeof FIELDS)[number];
 const isFieldName = (path: string): path is FieldName =>
   (FIELDS as readonly string[]).includes(path);
@@ -24,12 +23,14 @@ export function UserCreateForm() {
   const [failure, setFailure] = useState<unknown>();
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors },
   } = useForm<CreateUserRequest>({
     resolver: zodResolver(createUserRequestSchema),
-    defaultValues: { name: "", username: "", email: "", password: "", roles: [] },
+    // ロールは既定で何も選ばない（ui.md 5.4）
+    defaultValues: { name: "", username: "", email: "", password: "" },
   });
 
   const onSubmit = (values: CreateUserRequest) => {
@@ -102,29 +103,27 @@ export function UserCreateForm() {
             {...register("password")}
           />
         </Field>
-        <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium">ロール</legend>
-          <div className="flex flex-wrap gap-2">
-            {ROLES.map((role) => (
-              <label
-                key={role}
-                className="relative flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors select-none has-checked:border-primary has-checked:bg-accent has-checked:text-accent-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
-              >
-                <input
-                  type="checkbox"
-                  value={role}
-                  className="peer absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
-                  {...register("roles")}
-                />
-                <Check className="hidden size-3.5 peer-checked:block" aria-hidden />
-                {ROLE_LABELS[role]}
-              </label>
-            ))}
-          </div>
-          {errors.roles?.message && (
-            <p className="text-sm text-destructive">{errors.roles.message}</p>
+        <div className="grid gap-1.5">
+          <span id="role-label" className="text-sm font-medium">
+            ロール
+          </span>
+          <Controller
+            control={control}
+            name="role"
+            render={({ field }) => (
+              <RoleRadio
+                name={field.name}
+                labelledBy="role-label"
+                value={field.value}
+                onChange={field.onChange}
+                invalid={!!errors.role}
+              />
+            )}
+          />
+          {errors.role?.message && (
+            <p className="text-sm text-destructive">{errors.role.message}</p>
           )}
-        </fieldset>
+        </div>
       </div>
       <div className="mt-6 flex justify-end gap-2">
         <Link to="/admin/users" className={buttonVariants({ variant: "ghost" })}>

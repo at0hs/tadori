@@ -37,16 +37,15 @@ export function useCreateUser() {
   });
 }
 
-export function useSetRole(userId: string, isSelf: boolean) {
+/** ロールを変更する（PUT /api/admin/users/{id}/role、D-64）。自分のロールは変えられない（D-38）。 */
+export function useSetRole(userId: string) {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async ({ role, on }: { role: Role; on: boolean }) => {
-      const target = api.admin.users[":id"].roles[":role"];
-      const param = { id: userId, role };
-      await (on ? target.$put({ param }) : target.$delete({ param }));
+    mutationFn: async (role: Role) => {
+      await api.admin.users[":id"].role.$put({ param: { id: userId }, json: { role } });
     },
-    // 失敗しても取り直して、スイッチをサーバーの状態に戻す
-    onSettled: () => invalidate({ self: isSelf }),
+    // 失敗しても取り直して、選択肢をサーバーの状態に戻す
+    onSettled: () => invalidate({ self: false }),
   });
 }
 
