@@ -24,6 +24,7 @@ import { Route as AppAdminUsersNewRouteImport } from './routes/_app/admin/users/
 import { Route as AppProceduresProcedureIdIndexRouteImport } from './routes/_app/procedures/$procedureId/index'
 import { Route as AppProceduresProcedureIdEditRouteImport } from './routes/_app/procedures/$procedureId/edit'
 import { Route as AppProceduresProcedureIdStartRouteImport } from './routes/_app/procedures/$procedureId/start'
+import { Route as AppProceduresProcedureIdDraftDiffRouteImport } from './routes/_app/procedures/$procedureId/draft/diff'
 import { Route as AppProceduresProcedureIdVersionsIndexRouteImport } from './routes/_app/procedures/$procedureId/versions/index'
 import { Route as AppProceduresProcedureIdVersionsVersionNoRouteImport } from './routes/_app/procedures/$procedureId/versions/$versionNo'
 
@@ -105,6 +106,12 @@ const AppProceduresProcedureIdStartRoute =
     path: '/procedures/$procedureId/start',
     getParentRoute: () => AppRoute,
   } as any)
+const AppProceduresProcedureIdDraftDiffRoute =
+  AppProceduresProcedureIdDraftDiffRouteImport.update({
+    id: '/procedures/$procedureId/draft/diff',
+    path: '/procedures/$procedureId/draft/diff',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppProceduresProcedureIdVersionsIndexRoute =
   AppProceduresProcedureIdVersionsIndexRouteImport.update({
     id: '/procedures/$procedureId/versions/',
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/procedures/$procedureId/start': typeof AppProceduresProcedureIdStartRoute
   '/admin/users/': typeof AppAdminUsersIndexRoute
   '/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/draft/diff': typeof AppProceduresProcedureIdDraftDiffRoute
   '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
   '/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/procedures/$procedureId/start': typeof AppProceduresProcedureIdStartRoute
   '/admin/users': typeof AppAdminUsersIndexRoute
   '/procedures/$procedureId': typeof AppProceduresProcedureIdIndexRoute
+  '/procedures/$procedureId/draft/diff': typeof AppProceduresProcedureIdDraftDiffRoute
   '/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
   '/procedures/$procedureId/versions': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/_app/procedures/$procedureId/start': typeof AppProceduresProcedureIdStartRoute
   '/_app/admin/users/': typeof AppAdminUsersIndexRoute
   '/_app/procedures/$procedureId/': typeof AppProceduresProcedureIdIndexRoute
+  '/_app/procedures/$procedureId/draft/diff': typeof AppProceduresProcedureIdDraftDiffRoute
   '/_app/procedures/$procedureId/versions/$versionNo': typeof AppProceduresProcedureIdVersionsVersionNoRoute
   '/_app/procedures/$procedureId/versions/': typeof AppProceduresProcedureIdVersionsIndexRoute
 }
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/procedures/$procedureId/start'
     | '/admin/users/'
     | '/procedures/$procedureId/'
+    | '/procedures/$procedureId/draft/diff'
     | '/procedures/$procedureId/versions/$versionNo'
     | '/procedures/$procedureId/versions/'
   fileRoutesByTo: FileRoutesByTo
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/procedures/$procedureId/start'
     | '/admin/users'
     | '/procedures/$procedureId'
+    | '/procedures/$procedureId/draft/diff'
     | '/procedures/$procedureId/versions/$versionNo'
     | '/procedures/$procedureId/versions'
   id:
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/_app/procedures/$procedureId/start'
     | '/_app/admin/users/'
     | '/_app/procedures/$procedureId/'
+    | '/_app/procedures/$procedureId/draft/diff'
     | '/_app/procedures/$procedureId/versions/$versionNo'
     | '/_app/procedures/$procedureId/versions/'
   fileRoutesById: FileRoutesById
@@ -344,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProceduresProcedureIdStartRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/procedures/$procedureId/draft/diff': {
+      id: '/_app/procedures/$procedureId/draft/diff'
+      path: '/procedures/$procedureId/draft/diff'
+      fullPath: '/procedures/$procedureId/draft/diff'
+      preLoaderRoute: typeof AppProceduresProcedureIdDraftDiffRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/procedures/$procedureId/versions/': {
       id: '/_app/procedures/$procedureId/versions/'
       path: '/procedures/$procedureId/versions'
@@ -388,6 +408,7 @@ interface AppRouteChildren {
   AppProceduresProcedureIdEditRoute: typeof AppProceduresProcedureIdEditRoute
   AppProceduresProcedureIdStartRoute: typeof AppProceduresProcedureIdStartRoute
   AppProceduresProcedureIdIndexRoute: typeof AppProceduresProcedureIdIndexRoute
+  AppProceduresProcedureIdDraftDiffRoute: typeof AppProceduresProcedureIdDraftDiffRoute
   AppProceduresProcedureIdVersionsVersionNoRoute: typeof AppProceduresProcedureIdVersionsVersionNoRoute
   AppProceduresProcedureIdVersionsIndexRoute: typeof AppProceduresProcedureIdVersionsIndexRoute
 }
@@ -403,6 +424,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppProceduresProcedureIdEditRoute: AppProceduresProcedureIdEditRoute,
   AppProceduresProcedureIdStartRoute: AppProceduresProcedureIdStartRoute,
   AppProceduresProcedureIdIndexRoute: AppProceduresProcedureIdIndexRoute,
+  AppProceduresProcedureIdDraftDiffRoute:
+    AppProceduresProcedureIdDraftDiffRoute,
   AppProceduresProcedureIdVersionsVersionNoRoute:
     AppProceduresProcedureIdVersionsVersionNoRoute,
   AppProceduresProcedureIdVersionsIndexRoute:
