@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useRouterState } from "@tanstack/react-router";
 import { ShieldOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { ErrorBanner } from "@/components/error-banner.tsx";
 import { useMe } from "@/features/me/queries.ts";
@@ -32,7 +33,15 @@ export function NewProcedurePage() {
 export function EditProcedurePage({ procedureId }: { procedureId: string }) {
   const me = useMe();
   const isAuthor = me.roles.includes("author");
-  const notice = useRouterState({ select: (s) => s.location.state.editorNotice });
+  const fromHistory = useRouterState({ select: (s) => s.location.state.editorNotice });
+  // 知らせは1回だけ出す。開いたときの値を取っておき、再読み込みでまた出ないようブラウザの履歴の状態からは消す
+  // （消すとルーターの状態からも消えることがあるので、表示には取っておいた値を使う）
+  const [notice] = useState(fromHistory);
+  useEffect(() => {
+    if (!notice) return;
+    const { editorNotice: _, ...rest } = window.history.state ?? {};
+    window.history.replaceState(rest, "");
+  }, [notice]);
   const { data, error, isPending } = useQuery({
     ...draftQueryOptions(procedureId),
     enabled: isAuthor,
