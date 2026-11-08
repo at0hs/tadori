@@ -1,4 +1,4 @@
-import type { Role } from "@tadori/shared";
+import { can, type Role } from "@tadori/shared";
 import { BookOpen, House, ListChecks, type LucideIcon, Settings } from "lucide-react";
 
 // メニューの項目（screens.md 2.1、ui.md 2章）。項目はここだけに書き、並べ方は AppShell が決める。
@@ -18,6 +18,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "管理", to: "/admin/users", icon: Settings, adminOnly: true },
 ];
 
-export function visibleNavItems(roles: readonly Role[]): NavItem[] {
-  return NAV_ITEMS.filter((item) => !item.adminOnly || roles.includes("admin"));
+export function visibleNavItems(role: Role): NavItem[] {
+  return NAV_ITEMS.filter((item) => !item.adminOnly || can(role, "manageUsers"));
 }

@@ -21,7 +21,7 @@ import { type ThemePreference, useTheme } from "@/lib/theme.ts";
 // 共通の枠（screens.md 2.1、ui.md 2章）。メニューの並べ方はここだけが決める。
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: me } = useSuspenseQuery(meQueryOptions);
-  const items = me.mustChangePassword ? [] : visibleNavItems(me.roles);
+  const items = me.mustChangePassword ? [] : visibleNavItems(me.role);
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto">
-            <UserMenu name={me.name} roles={me.roles.map((r) => ROLE_LABELS[r]).join("・")} />
+            <UserMenu name={me.name} role={ROLE_LABELS[me.role]} />
           </div>
         </div>
       </header>
@@ -61,7 +61,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }
   { value: "system", label: "OS に合わせる", icon: Monitor },
 ];
 
-function UserMenu({ name, roles }: { name: string; roles: string }) {
+function UserMenu({ name, role }: { name: string; role: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { preference, setPreference } = useTheme();
@@ -109,7 +109,7 @@ function UserMenu({ name, roles }: { name: string; roles: string }) {
             </span>
             <div>
               <div className="font-medium">{name}</div>
-              <div className="text-xs text-muted-foreground">{roles || "ロールなし"}</div>
+              <div className="text-xs text-muted-foreground">{role}</div>
             </div>
           </div>
           <DropdownMenuSeparator />

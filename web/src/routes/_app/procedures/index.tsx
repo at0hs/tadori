@@ -1,3 +1,4 @@
+import { can } from "@tadori/shared";
 import { createFileRoute, Link, stripSearchParams } from "@tanstack/react-router";
 import { FilePlus } from "lucide-react";
 import { z } from "zod";
@@ -26,8 +27,8 @@ function ProceduresPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const me = useMe();
-  const canCreate = me.roles.includes("author");
-  // 作成者ロールのない人には未公開の手順書が返らないので、未公開での絞り込みは「すべて」として扱う
+  const canCreate = can(me.role, "editProcedure");
+  // 閲覧者には未公開の手順書が返らないので、未公開での絞り込みは「すべて」として扱う
   const status = !canCreate && search.status === "unpublished" ? "all" : search.status;
   return (
     <>
@@ -45,7 +46,7 @@ function ProceduresPage() {
       />
       <ProcedureList
         filter={{ q: search.q, tags: search.tag, status, sort: search.sort }}
-        isAuthor={canCreate}
+        canEditDrafts={canCreate}
         onFilterChange={(next) =>
           navigate({
             search: (prev) => ({

@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  can,
   type DraftConflict,
   type DraftLock,
   type DraftResponse,
@@ -22,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMe } from "@/features/me/queries.ts";
 import { type FieldError, isApiError } from "@/lib/api.ts";
 import { formatShortDateTime } from "@/lib/format.ts";
 import { holdLoginRedirect } from "@/lib/query.ts";
@@ -94,6 +96,8 @@ export function ProcedureEditor({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // 公開は承認者以上（D-65）。作業者には「公開する」を出さず、保存を主なボタンにする
+  const canPublish = can(useMe().role, "publishProcedure");
   const id = procedureId ?? "";
   const form = useForm<ProcedureContent>({
     resolver: zodResolver(procedureContentSchema),
@@ -390,14 +394,20 @@ export function ProcedureEditor({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button type="submit" variant="outline" disabled={locked || busy}>
+              <Button
+                type="submit"
+                variant={canPublish ? "outline" : "default"}
+                disabled={locked || busy}
+              >
                 <Save aria-hidden />
                 保存
               </Button>
-              <Button type="button" onClick={onPublishClick} disabled={locked || busy}>
-                <Send aria-hidden />
-                公開する
-              </Button>
+              {canPublish && (
+                <Button type="button" onClick={onPublishClick} disabled={locked || busy}>
+                  <Send aria-hidden />
+                  公開する
+                </Button>
+              )}
             </div>
           </div>
           <div className="mt-0.5 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
@@ -420,6 +430,11 @@ export function ProcedureEditor({
               </>
             )}
           </div>
+          {!canPublish && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              公開は承認者が行います。保存した下書きは、承認者のホームに出ます
+            </p>
+          )}
         </div>
 
         {banner?.kind === "errors" && (

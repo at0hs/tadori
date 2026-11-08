@@ -1,3 +1,4 @@
+import { can } from "@tadori/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useRouterState } from "@tanstack/react-router";
 import { ShieldOff } from "lucide-react";
@@ -10,7 +11,7 @@ import { DocumentSkeleton, ProcedureNotFound } from "../procedure-detail.tsx";
 import { draftQueryOptions } from "../queries.ts";
 import { ProcedureEditor } from "./procedure-editor.tsx";
 
-// S-08・S-09 の入口。作成者ロールの確認（守りは API）と、編集画面に読み込む内容の取得。
+// S-08・S-09 の入口。作業者以上のロールの確認（守りは API）と、編集画面に読み込む内容の取得。
 
 function NoPermission() {
   return (
@@ -18,7 +19,7 @@ function NoPermission() {
       <EmptyState
         icon={ShieldOff}
         title="このページを開く権限がありません"
-        description="作成者ロールが必要です"
+        description="作業者以上のロールが必要です"
       />
     </div>
   );
@@ -26,13 +27,13 @@ function NoPermission() {
 
 export function NewProcedurePage() {
   const me = useMe();
-  if (!me.roles.includes("author")) return <NoPermission />;
+  if (!can(me.role, "editProcedure")) return <NoPermission />;
   return <ProcedureEditor mode="new" initial={null} />;
 }
 
 export function EditProcedurePage({ procedureId }: { procedureId: string }) {
   const me = useMe();
-  const isAuthor = me.roles.includes("author");
+  const canEdit = can(me.role, "editProcedure");
   const fromHistory = useRouterState({ select: (s) => s.location.state.editorNotice });
   // 知らせは1回だけ出す。開いたときの値を取っておき、再読み込みでまた出ないようブラウザの履歴の状態からは消す
   // （消すとルーターの状態からも消えることがあるので、表示には取っておいた値を使う）
@@ -44,9 +45,9 @@ export function EditProcedurePage({ procedureId }: { procedureId: string }) {
   }, [notice]);
   const { data, error, isPending } = useQuery({
     ...draftQueryOptions(procedureId),
-    enabled: isAuthor,
+    enabled: canEdit,
   });
-  if (!isAuthor || isApiError(error, "FORBIDDEN")) return <NoPermission />;
+  if (!canEdit || isApiError(error, "FORBIDDEN")) return <NoPermission />;
   if (isApiError(error, "NOT_FOUND")) return <ProcedureNotFound />;
   // アーカイブした手順書は編集できない。詳細に戻して伝える（screens.md S-09）
   if (isApiError(error, "STATE_CONFLICT")) {
