@@ -21,10 +21,10 @@ const exportOf = (cookie: string, id: string) =>
   request(`/api/executions/${id}/export`, { cookie });
 
 async function setup() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  await createUser({ username: "view01", roles: ["viewer"] });
-  await createUser({ username: "admin01", roles: ["admin"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  await createUser({ username: "view01", role: "viewer" });
+  await createUser({ username: "admin01", role: "admin" });
   const executor = await login("exec01");
   const procedureId = await publishedProcedure(authorId);
   const id = await startRun(executor, procedureId);

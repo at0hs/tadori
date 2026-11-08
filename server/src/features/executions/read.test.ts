@@ -9,10 +9,10 @@ import { userRoles } from "../../db/schema/users.ts";
 beforeEach(resetDb);
 
 async function people() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  await createUser({ username: "viewer01", roles: ["viewer"] });
-  await createUser({ username: "admin01", roles: ["admin"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  await createUser({ username: "viewer01", role: "viewer" });
+  await createUser({ username: "admin01", role: "admin" });
   return {
     authorId,
     executorId,

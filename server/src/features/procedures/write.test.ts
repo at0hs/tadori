@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 async function author(username = "author01") {
-  const id = await createUser({ username, roles: ["author"] });
+  const id = await createUser({ username, role: "worker" });
   return { id, cookie: await login(username) };
 }
 
@@ -364,7 +364,7 @@ describe("権限", () => {
   it("作成者ロールがなければ、書き込みの API はすべて FORBIDDEN", async () => {
     const a = await author();
     const id = await created(a.cookie);
-    await createUser({ username: "other01", roles: ["viewer", "executor", "approver", "admin"] });
+    await createUser({ username: "other01", role: "admin" });
     const other = await login("other01");
 
     const results = await Promise.all([

@@ -18,7 +18,7 @@ import {
 import { Hono } from "hono";
 import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams, queryParams } from "../../lib/validate.ts";
-import { requireRole } from "../../middleware/role.ts";
+import { requirePermission } from "../../middleware/role.ts";
 import {
   getDraft,
   getProcedure,
@@ -60,11 +60,11 @@ export const procedureRoutes = new Hono<AppEnv>()
     const body: ProcedureVersionResponse = await getVersion(c.get("actor"), id, versionNo);
     return c.json(body);
   })
-  .get("/:id/draft", requireRole("author"), pathParams(procedureIdParamSchema), async (c) => {
+  .get("/:id/draft", requirePermission("editProcedure"), pathParams(procedureIdParamSchema), async (c) => {
     const body: DraftResponse = await getDraft(c.get("actor"), c.req.valid("param").id);
     return c.json(body);
   })
-  .post("/", requireRole("author"), jsonBody(createProcedureRequestSchema), async (c) => {
+  .post("/", requirePermission("editProcedure"), jsonBody(createProcedureRequestSchema), async (c) => {
     const body: CreateProcedureResponse = await createProcedure(
       operatorOf(c),
       c.req.valid("json").content,
@@ -73,7 +73,7 @@ export const procedureRoutes = new Hono<AppEnv>()
   })
   .put(
     "/:id/draft",
-    requireRole("author"),
+    requirePermission("editProcedure"),
     pathParams(procedureIdParamSchema),
     jsonBody(saveDraftRequestSchema),
     async (c) => {
@@ -89,7 +89,7 @@ export const procedureRoutes = new Hono<AppEnv>()
   )
   .post(
     "/:id/publish",
-    requireRole("author"),
+    requirePermission("publishProcedure"),
     pathParams(procedureIdParamSchema),
     jsonBody(publishRequestSchema),
     async (c) => {
@@ -106,7 +106,7 @@ export const procedureRoutes = new Hono<AppEnv>()
   )
   .delete(
     "/:id/draft",
-    requireRole("author"),
+    requirePermission("editProcedure"),
     pathParams(procedureIdParamSchema),
     queryParams(discardDraftQuerySchema),
     async (c) => {
@@ -118,7 +118,7 @@ export const procedureRoutes = new Hono<AppEnv>()
       return c.json(body);
     },
   )
-  .post("/:id/archive", requireRole("author"), pathParams(procedureIdParamSchema), async (c) => {
+  .post("/:id/archive", requirePermission("archiveProcedure"), pathParams(procedureIdParamSchema), async (c) => {
     await archiveProcedure(operatorOf(c), c.req.valid("param").id);
     return c.body(null, 204);
   });

@@ -10,7 +10,7 @@ afterEach(() => {
 
 describe("想定していないエラー（conventions.md 3.2、6.4）", () => {
   it("INTERNAL_ERROR を返し、応答とエラーログに同じ requestId を入れる。内部の情報は返さない", async () => {
-    await createUser({ username: "admin01", roles: ["admin"] });
+    await createUser({ username: "admin01", role: "admin" });
     const target = await createUser({ username: "user01" });
     const cookie = await login("admin01");
     vi.spyOn(auth.api, "banUser").mockRejectedValue(new Error("connection reset (dummy)"));

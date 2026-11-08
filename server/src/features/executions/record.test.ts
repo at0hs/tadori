@@ -8,9 +8,9 @@ import { executions } from "../../db/schema/executions.ts";
 beforeEach(resetDb);
 
 async function setup() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  await createUser({ username: "exec02", roles: ["executor"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  await createUser({ username: "exec02", role: "worker" });
   const executor = await login("exec01");
   const id = await startRun(executor, await publishedProcedure(authorId));
   const d = await detail(executor, id);

@@ -17,9 +17,9 @@ beforeEach(resetDb);
 afterEach(() => vi.restoreAllMocks());
 
 async function setup() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  const adminId = await createUser({ username: "admin01", roles: ["admin"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  const adminId = await createUser({ username: "admin01", role: "admin" });
   const executor = await login("exec01");
   const id = await startRun(executor, await publishedProcedure(authorId));
   const d = await detail(executor, id);
@@ -122,7 +122,7 @@ describe("終了", () => {
   it("実行者本人でなければ終了できない", async () => {
     const { executor, id, main } = await setup();
     await completeMain(executor, id, main);
-    await createUser({ username: "exec02", roles: ["executor"] });
+    await createUser({ username: "exec02", role: "worker" });
     expect((await finish(await login("exec02"), id)).status).toBe(403);
   });
 });

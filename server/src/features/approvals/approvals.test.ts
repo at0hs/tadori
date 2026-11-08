@@ -52,11 +52,11 @@ async function finishedRun(cookie: string, procedureId: string) {
 }
 
 async function setup() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  const approverId = await createUser({ username: "appr01", roles: ["approver"] });
-  const bothId = await createUser({ username: "both01", roles: ["approver", "executor"] });
-  await createUser({ username: "admin01", roles: ["admin"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  const approverId = await createUser({ username: "appr01", role: "approver" });
+  const bothId = await createUser({ username: "both01", role: "approver" });
+  await createUser({ username: "admin01", role: "admin" });
   const executor = await login("exec01");
   const procedureId = await publishedProcedure(authorId);
   const { id, main } = await finishedRun(executor, procedureId);

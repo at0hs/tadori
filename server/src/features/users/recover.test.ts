@@ -12,6 +12,7 @@ import {
 } from "../../../test/helpers.ts";
 import { db } from "../../db/client.ts";
 import { user } from "../../db/schema/auth.ts";
+import { userRoles } from "../../db/schema/users.ts";
 import { recoverAdmin } from "./recover.ts";
 
 beforeEach(resetDb);
@@ -21,8 +22,8 @@ afterEach(() => {
 
 describe("管理者の復旧のコマンド（D-51）", () => {
   it("無効化された、管理者ロールのないユーザーを、パスワード変更が必要な管理者に戻す", async () => {
-    await createUser({ username: "admin01", roles: ["admin"] });
-    const id = await createUser({ username: "admin02", roles: ["viewer"] });
+    await createUser({ username: "admin01", role: "admin" });
+    const id = await createUser({ username: "admin02", role: "viewer" });
     const oldCookie = await login("admin02");
     const adminCookie = await login("admin01");
     await request(`/api/admin/users/${id}/ban`, { method: "POST", cookie: adminCookie });
@@ -41,7 +42,7 @@ describe("管理者の復旧のコマンド（D-51）", () => {
 
     const cookie = await login("admin02", password);
     expect(await readJson(await request("/api/me", { cookie }))).toMatchObject({
-      roles: ["admin", "viewer"],
+      role: "admin",
       mustChangePassword: true,
     });
     const [row] = await db.select().from(user).where(eq(user.id, id));
@@ -56,6 +57,30 @@ describe("管理者の復旧のコマンド（D-51）", () => {
       }),
     ]);
     expect(JSON.stringify(logs)).not.toContain(password);
+  });
+
+  it("作業者を管理者にし、最後にロールを設定した人は本人にする（D-64）", async () => {
+    const id = await createUser({ username: "worker01", role: "worker" });
+    const logs = captureOperationLogs();
+    await recoverAdmin("worker01");
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
+    expect(rows).toEqual([expect.objectContaining({ role: "admin", updatedBy: id })]);
+    expect(await adminColumnMismatches()).toEqual([]);
+    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({ adminRoleGranted: true });
+  });
+
+  it("ロールの行がないユーザーにも管理者の行を作る", async () => {
+    const id = await createUser({ username: "norole01", role: null });
+    await recoverAdmin("norole01");
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
+    expect(rows).toEqual([expect.objectContaining({ role: "admin", updatedBy: id })]);
+  });
+
+  it("すでに管理者なら adminRoleGranted は偽", async () => {
+    await createUser({ username: "admin03", role: "admin" });
+    const logs = captureOperationLogs();
+    await recoverAdmin("admin03");
+    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({ adminRoleGranted: false });
   });
 
   it("いないユーザー名ならエラーにし、何も変えない", async () => {

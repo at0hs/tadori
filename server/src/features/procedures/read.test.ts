@@ -8,8 +8,8 @@ const UNKNOWN_ID = "01970000-0000-7000-8000-000000000000";
 
 /** 作成者と閲覧者を作ってログインする。 */
 async function people() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  await createUser({ username: "viewer01", roles: ["viewer"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  await createUser({ username: "viewer01", role: "viewer" });
   return { authorId, author: await login("author01"), viewer: await login("viewer01") };
 }
 

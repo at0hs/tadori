@@ -52,7 +52,8 @@ export async function ensureInitialAdmin(cfg: InitialAdminConfig): Promise<"crea
     isAdmin: true,
     mustChangePassword: true,
   });
-  await db.insert(userRoles).values({ userId: id, role: "admin", grantedBy: null });
+  // 最後にロールを設定した人は本人にする（data-model.md 4.1）
+  await db.insert(userRoles).values({ userId: id, role: "admin", updatedBy: id });
 
   logger.info(
     { event: "user.created", target: { type: "user", id }, initialAdmin: true },

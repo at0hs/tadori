@@ -35,15 +35,15 @@ describe("Better Auth の入口の許可リスト（D-33）", () => {
   });
 
   it("管理者でも admin プラグインの入口は外から呼べない", async () => {
-    await createUser({ username: "admin01", roles: ["admin"] });
-    const target = await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "admin01", role: "admin" });
+    const target = await createUser({ username: "user01", role: "viewer" });
     const cookie = await login("admin01");
     const res = await request("/api/auth/admin/ban-user", { cookie, json: { userId: target } });
     expect(res.status).toBe(404);
   });
 
   it("ユーザー名でログインでき、セッションの Cookie が返る", async () => {
-    await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "user01", role: "viewer" });
     const res = await request("/api/auth/sign-in/username", {
       json: { username: "user01", password: PASSWORD },
     });
@@ -55,8 +55,8 @@ describe("Better Auth の入口の許可リスト（D-33）", () => {
   });
 
   it("F-01 AC: 無効化されたユーザーはログインできない", async () => {
-    await createUser({ username: "admin01", roles: ["admin"] });
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "admin01", role: "admin" });
+    const id = await createUser({ username: "user01", role: "viewer" });
     const userCookie = await login("user01");
     const adminCookie = await login("admin01");
 
@@ -72,7 +72,7 @@ describe("Better Auth の入口の許可リスト（D-33）", () => {
   });
 
   it("ログアウトするとセッションが使えなくなる", async () => {
-    await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "user01", role: "viewer" });
     const cookie = await login("user01");
     expect((await request("/api/me", { cookie })).status).toBe(200);
     expect((await request("/api/auth/sign-out", { cookie, json: {} })).status).toBe(200);
@@ -82,7 +82,7 @@ describe("Better Auth の入口の許可リスト（D-33）", () => {
 
 describe("ログインの回数制限と IP（D-52、D-60）", () => {
   it("X-Forwarded-For を毎回変えても、接続元ごとに数えられる", async () => {
-    await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "user01", role: "viewer" });
     const ip = "198.51.100.7";
     const statuses: number[] = [];
     for (let i = 0; i < SIGN_IN_RATE_LIMIT.max + 2; i++) {
@@ -148,7 +148,7 @@ describe("F-10 AC: ログインの成功・失敗がログから追える", () =
   });
 
   it("無効化されたユーザーのログインは失敗として出す", async () => {
-    await createUser({ username: "admin01", roles: ["admin"] });
+    await createUser({ username: "admin01", role: "admin" });
     const id = await createUser({ username: "user01" });
     const adminCookie = await login("admin01");
     await request(`/api/admin/users/${id}/ban`, { cookie: adminCookie, json: {} });

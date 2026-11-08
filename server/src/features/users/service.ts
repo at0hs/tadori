@@ -1,5 +1,5 @@
-import { type AdminUser, type CreateUserRequest, ROLES, type Role } from "@tadori/shared";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import type { AdminUser, CreateUserRequest, Role } from "@tadori/shared";
+import { asc, eq, sql } from "drizzle-orm";
 import {
   banUserAccount,
   createUserAccount,
@@ -13,7 +13,7 @@ import type { Operator } from "../../lib/hono.ts";
 import { logOperation } from "../../lib/operation-log.ts";
 
 // ユーザー・ロールの管理（F-01、authorization.md 3.1・4章、conventions.md 4.4）。
-// 管理者ロールの確認はルートのミドルウェアで済んでいる（authorization.md 2章の 3）。
+// 管理者であることの確認はルートのミドルウェアで済んでいる（authorization.md 2章の 3）。
 
 const userColumns = {
   id: user.id,
@@ -35,29 +35,14 @@ type UserRow = {
   createdAt: Date;
 };
 
-const byRoleOrder = (a: Role, b: Role) => ROLES.indexOf(a) - ROLES.indexOf(b);
-
-async function rolesOf(userIds: string[]): Promise<Map<string, Role[]>> {
-  const map = new Map<string, Role[]>();
-  if (userIds.length === 0) return map;
-  const rows = await db
-    .select({ userId: userRoles.userId, role: userRoles.role })
-    .from(userRoles)
-    .where(inArray(userRoles.userId, userIds));
-  for (const { userId, role } of rows) {
-    map.set(userId, [...(map.get(userId) ?? []), role]);
-  }
-  for (const roles of map.values()) roles.sort(byRoleOrder);
-  return map;
-}
-
-function toAdminUser(row: UserRow, roles: Role[]): AdminUser {
+function toAdminUser(row: UserRow, role: Role | null): AdminUser {
   return {
     id: row.id,
     name: row.name,
     username: row.username ?? "",
     email: row.email,
-    roles,
+    // 行がなければ閲覧者（authorization.md 1章）
+    role: role ?? "viewer",
     banned: row.banned === true,
     mustChangePassword: row.mustChangePassword === true,
     createdAt: row.createdAt.toISOString(),
@@ -66,17 +51,23 @@ function toAdminUser(row: UserRow, roles: Role[]): AdminUser {
 
 /** ユーザーの一覧（S-13）。無効化したユーザーも含める。 */
 export async function listUsers(): Promise<AdminUser[]> {
-  const rows = await db.select(userColumns).from(user).orderBy(asc(user.createdAt), asc(user.id));
-  const roles = await rolesOf(rows.map((r) => r.id));
-  return rows.map((row) => toAdminUser(row, roles.get(row.id) ?? []));
+  const rows = await db
+    .select({ ...userColumns, role: userRoles.role })
+    .from(user)
+    .leftJoin(userRoles, eq(userRoles.userId, user.id))
+    .orderBy(asc(user.createdAt), asc(user.id));
+  return rows.map((row) => toAdminUser(row, row.role));
 }
 
 /** ユーザーの詳細（S-15）。 */
 export async function getUser(userId: string): Promise<AdminUser> {
-  const [row] = await db.select(userColumns).from(user).where(eq(user.id, userId));
+  const [row] = await db
+    .select({ ...userColumns, role: userRoles.role })
+    .from(user)
+    .leftJoin(userRoles, eq(userRoles.userId, user.id))
+    .where(eq(user.id, userId));
   if (!row) throw new AppError("NOT_FOUND");
-  const roles = await rolesOf([userId]);
-  return toAdminUser(row, roles.get(userId) ?? []);
+  return toAdminUser(row, row.role);
 }
 
 /**
@@ -89,23 +80,14 @@ export async function createUser(op: Operator, input: CreateUserRequest): Promis
     name: input.name,
     email: input.email,
     password: input.password,
-    isAdmin: input.roles.includes("admin"),
+    isAdmin: input.role === "admin",
     mustChangePassword: true,
   });
-  if (input.roles.length > 0) {
-    await db
-      .insert(userRoles)
-      .values(input.roles.map((role) => ({ userId: id, role, grantedBy: op.actor.id })));
-  }
+  await db.insert(userRoles).values({ userId: id, role: input.role, updatedBy: op.actor.id });
 
   logOperation(
     op.meta,
-    {
-      event: "user.created",
-      actorId: op.actor.id,
-      target: { type: "user", id },
-      roles: [...input.roles].sort(byRoleOrder),
-    },
+    { event: "user.created", actorId: op.actor.id, target: { type: "user", id }, role: input.role },
     "ユーザーを作成した",
   );
   return { id };
@@ -123,73 +105,46 @@ async function lockUser(tx: Tx, userId: string) {
   if (!row) throw new AppError("NOT_FOUND");
 }
 
-/** 管理者ロールの有無を user.role に写す（D-33）。ロールを変えたのと同じトランザクションの中で呼ぶ。 */
-async function syncAdminColumn(tx: Tx, userId: string) {
-  const admin = await tx
-    .select({ role: userRoles.role })
-    .from(userRoles)
-    .where(and(eq(userRoles.userId, userId), eq(userRoles.role, "admin")));
-  await tx
-    .update(user)
-    .set({ role: admin.length > 0 ? "admin" : "user" })
-    .where(eq(user.id, userId));
-}
-
-/** ロールを付与する。すでに持っていれば何もしない（api.md 4.6）。操作ログは変わったときだけ出す。 */
-export async function grantRole(op: Operator, userId: string, role: Role) {
-  const changed = await db.transaction(async (tx) => {
-    await lockUser(tx, userId);
-    const inserted = await tx
-      .insert(userRoles)
-      .values({ userId, role, grantedBy: op.actor.id })
-      .onConflictDoNothing()
-      .returning({ role: userRoles.role });
-    if (role === "admin") await syncAdminColumn(tx, userId);
-    return inserted.length > 0;
-  });
-
-  if (changed) {
-    logOperation(
-      op.meta,
-      {
-        event: "user.role_granted",
-        actorId: op.actor.id,
-        target: { type: "user", id: userId },
-        role,
-      },
-      "ロールを付与した",
-    );
-  }
-}
-
 /**
- * ロールを剥奪する。持っていなければ何もしない（api.md 4.6）。操作ログは変わったときだけ出す。
- * 自分の管理者ロールは剥奪できない（D-38）。
+ * ロールを変更する（D-64、api.md 4.6）。自分のロールは、同じロールでも変更できない（D-38）。
+ * 行がないか違えば書き、user.role に管理者かどうかを写す（D-33）。
+ * 操作ログは、実効のロール（行がなければ閲覧者）が変わったときだけ出す。
  */
-export async function revokeRole(op: Operator, userId: string, role: Role) {
-  const changed = await db.transaction(async (tx) => {
+export async function setRole(op: Operator, userId: string, role: Role) {
+  const from = await db.transaction(async (tx) => {
     await lockUser(tx, userId);
-    if (userId === op.actor.id && role === "admin") {
-      throw new AppError("FORBIDDEN", "自分の管理者ロールは剥奪できません。");
+    if (userId === op.actor.id) throw new AppError("FORBIDDEN", "自分のロールは変更できません。");
+    const [current] = await tx
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, userId));
+    if (current?.role !== role) {
+      await tx
+        .insert(userRoles)
+        .values({ userId, role, updatedBy: op.actor.id })
+        .onConflictDoUpdate({
+          target: userRoles.userId,
+          set: { role, updatedBy: op.actor.id, updatedAt: sql`now()` },
+        });
+      await tx
+        .update(user)
+        .set({ role: role === "admin" ? "admin" : "user" })
+        .where(eq(user.id, userId));
     }
-    const deleted = await tx
-      .delete(userRoles)
-      .where(and(eq(userRoles.userId, userId), eq(userRoles.role, role)))
-      .returning({ role: userRoles.role });
-    if (role === "admin") await syncAdminColumn(tx, userId);
-    return deleted.length > 0;
+    return current?.role ?? "viewer";
   });
 
-  if (changed) {
+  if (from !== role) {
     logOperation(
       op.meta,
       {
-        event: "user.role_revoked",
+        event: "user.role_changed",
         actorId: op.actor.id,
         target: { type: "user", id: userId },
-        role,
+        from,
+        to: role,
       },
-      "ロールを剥奪した",
+      "ロールを変更した",
     );
   }
 }

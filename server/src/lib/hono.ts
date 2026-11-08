@@ -3,12 +3,12 @@ import type { Role } from "@tadori/shared";
 import type { Context } from "hono";
 import type { RequestMeta } from "./operation-log.ts";
 
-// 操作する人（conventions.md 2.1）。ロールはリクエストのたびに DB から読む（D-35）。
+// 操作する人（conventions.md 2.1）。ロールはリクエストのたびに DB から読む（D-35）。1人1つ（D-64）。
 export type Actor = {
   id: string;
   name: string;
   username: string;
-  roles: Role[];
+  role: Role;
   mustChangePassword: boolean;
 };
 

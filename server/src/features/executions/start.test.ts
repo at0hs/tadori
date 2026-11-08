@@ -21,8 +21,8 @@ beforeEach(resetDb);
 afterEach(() => vi.restoreAllMocks());
 
 async function people() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  await createUser({ username: "exec01", roles: ["executor"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  await createUser({ username: "exec01", role: "worker" });
   return { authorId, executor: await login("exec01") };
 }
 
@@ -98,7 +98,7 @@ describe("POST /api/executions", () => {
     const res = await start(executor, { procedureId, versionNo: 1, variables: {} });
     expect(res.status).toBe(404);
 
-    await createUser({ username: "both01", roles: ["author", "executor"] });
+    await createUser({ username: "both01", role: "worker" });
     const res2 = await start(await login("both01"), { procedureId, versionNo: 1, variables: {} });
     expect(res2.status).toBe(409);
     expect((await readJson(res2)).code).toBe("STATE_CONFLICT");
