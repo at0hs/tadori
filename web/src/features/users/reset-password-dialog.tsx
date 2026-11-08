@@ -43,6 +43,8 @@ export function ResetPasswordDialog({
   });
 
   const close = (next: boolean) => {
+    // 送信中は閉じない（結果を見届けられるように）
+    if (!next && resetPassword.isPending) return;
     if (!next) {
       reset();
       resetPassword.reset();
@@ -82,7 +84,9 @@ export function ResetPasswordDialog({
             />
           </Field>
           <div className="flex justify-end gap-2">
-            <DialogClose render={<Button variant="ghost" />}>キャンセル</DialogClose>
+            <DialogClose render={<Button variant="ghost" disabled={resetPassword.isPending} />}>
+              キャンセル
+            </DialogClose>
             <Button type="submit" disabled={resetPassword.isPending}>
               再設定する
             </Button>
