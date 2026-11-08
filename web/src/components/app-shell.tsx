@@ -1,7 +1,7 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, KeyRound, LogOut, Monitor, Moon, Sun, SunMoon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { AppLogo } from "@/components/app-logo.tsx";
 import {
   DropdownMenu,
@@ -66,75 +66,93 @@ function UserMenu({ name, roles }: { name: string; roles: string }) {
   const queryClient = useQueryClient();
   const { preference, setPreference } = useTheme();
 
+  const [logoutFailed, setLogoutFailed] = useState(false);
+
+  // 失敗したら（通信できない・サーバーのエラー）、ログインしたままなので画面に残って知らせる。
+  // 401 はセッションがもうないので、ログアウトできたものとして扱う。
   const logout = async () => {
-    await authClient.signOut();
+    setLogoutFailed(false);
+    try {
+      const { error } = await authClient.signOut();
+      if (error && error.status !== 401) throw error;
+    } catch {
+      setLogoutFailed(true);
+      return;
+    }
     clearSecrets();
     queryClient.clear();
     await navigate({ to: "/login" });
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label="自分のメニュー"
-        className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-chrome-foreground/50"
-      >
-        <span className="grid size-7 place-items-center rounded-full bg-white/20 text-xs font-semibold">
-          {name.slice(0, 1)}
-        </span>
-        {name}
-        <ChevronDown className="size-3.5 opacity-70" aria-hidden />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
-        <div className="flex items-center gap-2 px-2 py-2">
-          <span className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+    <div className="flex items-center gap-3">
+      {logoutFailed && (
+        <p role="alert" className="text-xs text-chrome-foreground">
+          ログアウトできませんでした。もう一度試してください
+        </p>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="自分のメニュー"
+          className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-chrome-foreground/50"
+        >
+          <span className="grid size-7 place-items-center rounded-full bg-white/20 text-xs font-semibold">
             {name.slice(0, 1)}
           </span>
-          <div>
-            <div className="font-medium">{name}</div>
-            <div className="text-xs text-muted-foreground">{roles || "ロールなし"}</div>
+          {name}
+          <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-60">
+          <div className="flex items-center gap-2 px-2 py-2">
+            <span className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+              {name.slice(0, 1)}
+            </span>
+            <div>
+              <div className="font-medium">{name}</div>
+              <div className="text-xs text-muted-foreground">{roles || "ロールなし"}</div>
+            </div>
           </div>
-        </div>
-        <DropdownMenuSeparator />
-        <div className="flex items-center justify-between px-2 py-1.5 text-sm">
-          <span className="flex items-center gap-2">
-            <SunMoon className="size-4 text-muted-foreground" aria-hidden />
-            テーマ
-          </span>
-          <ToggleGroup
-            aria-label="テーマ"
-            value={[preference]}
-            onValueChange={(v) => {
-              const next = v[0] as ThemePreference | undefined;
-              if (next) setPreference(next);
-            }}
-            spacing={0}
-            size="sm"
-            className="rounded-md bg-muted p-0.5"
-          >
-            {THEME_OPTIONS.map((o) => (
-              <ToggleGroupItem
-                key={o.value}
-                value={o.value}
-                aria-label={o.label}
-                title={o.label}
-                className="h-6 rounded px-1.5 data-pressed:bg-card data-pressed:shadow-sm"
-              >
-                <o.icon className="size-3.5" aria-hidden />
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate({ to: "/account/password" })}>
-          <KeyRound className="text-muted-foreground" aria-hidden />
-          パスワードの変更
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={logout}>
-          <LogOut className="text-muted-foreground" aria-hidden />
-          ログアウト
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+          <div className="flex items-center justify-between px-2 py-1.5 text-sm">
+            <span className="flex items-center gap-2">
+              <SunMoon className="size-4 text-muted-foreground" aria-hidden />
+              テーマ
+            </span>
+            <ToggleGroup
+              aria-label="テーマ"
+              value={[preference]}
+              onValueChange={(v) => {
+                const next = v[0] as ThemePreference | undefined;
+                if (next) setPreference(next);
+              }}
+              spacing={0}
+              size="sm"
+              className="rounded-md bg-muted p-0.5"
+            >
+              {THEME_OPTIONS.map((o) => (
+                <ToggleGroupItem
+                  key={o.value}
+                  value={o.value}
+                  aria-label={o.label}
+                  title={o.label}
+                  className="h-6 rounded px-1.5 data-pressed:bg-card data-pressed:shadow-sm"
+                >
+                  <o.icon className="size-3.5" aria-hidden />
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate({ to: "/account/password" })}>
+            <KeyRound className="text-muted-foreground" aria-hidden />
+            パスワードの変更
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={logout}>
+            <LogOut className="text-muted-foreground" aria-hidden />
+            ログアウト
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
