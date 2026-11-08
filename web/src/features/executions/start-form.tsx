@@ -65,9 +65,17 @@ export function StartExecutionPage({ procedureId }: { procedureId: string }) {
   if (isApiError(error, "NOT_FOUND")) return <ProcedureNotFound />;
   if (error) return <ErrorBanner error={error} />;
   if (isPending) return <DocumentSkeleton />;
-  // 未公開・アーカイブからは開始できない。手順書の詳細へ戻す
+  // 未公開・アーカイブからは開始できない。手順書の詳細へ戻す。
+  // 開いている間にアーカイブされた（読み込み直しで気づいた）ときも、なぜ戻されたかを伝える
   if ((data.status !== "published" && data.status !== "editing") || !data.latestVersion) {
-    return <Navigate to="/procedures/$procedureId" params={{ procedureId }} replace />;
+    return (
+      <Navigate
+        to="/procedures/$procedureId"
+        params={{ procedureId }}
+        search={data.status === "archived" ? { notice: "archived-start" } : {}}
+        replace
+      />
+    );
   }
   const version = pinned ?? data.latestVersion;
   if (pinned === undefined) setPinned(version);

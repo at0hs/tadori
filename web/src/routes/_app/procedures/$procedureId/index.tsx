@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { ProcedureDetail } from "@/features/procedures/procedure-detail.tsx";
+import { PROCEDURE_NOTICES, ProcedureDetail } from "@/features/procedures/procedure-detail.tsx";
 
-// S-05。notice は編集画面から戻されたときの知らせ（アーカイブした手順書は編集できない）。
+// S-05。notice は編集画面・実行の開始の画面から戻されたときの知らせ（アーカイブした手順書は編集も実行の開始もできない）。
 export const Route = createFileRoute("/_app/procedures/$procedureId/")({
-  validateSearch: z.object({ notice: z.enum(["archived-edit"]).optional().catch(undefined) }),
+  validateSearch: z.object({ notice: z.enum(PROCEDURE_NOTICES).optional().catch(undefined) }),
   component: ProcedurePage,
 });
 
