@@ -30,6 +30,8 @@ export function ArchiveDialog({
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
+        // 送信中は閉じない（結果を見届けられるように）
+        if (!next && archive.isPending) return;
         if (!next) archive.reset();
         onOpenChange(next);
       }}
@@ -59,7 +61,9 @@ export function ArchiveDialog({
         </div>
         {archive.error && <ErrorBanner error={archive.error} />}
         <div className="mt-2 flex justify-end gap-2">
-          <AlertDialogCancel variant="ghost">キャンセル</AlertDialogCancel>
+          <AlertDialogCancel variant="ghost" disabled={archive.isPending}>
+            キャンセル
+          </AlertDialogCancel>
           <Button
             className="bg-destructive text-destructive-foreground hover:bg-destructive/85"
             disabled={archive.isPending}

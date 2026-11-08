@@ -34,6 +34,14 @@ import { ProcedureDocument, VariableList } from "./procedure-document.tsx";
 import { ProcedureStatusLabel } from "./procedure-status.tsx";
 import { procedureQueryOptions } from "./queries.ts";
 
+/** 編集画面・実行の開始の画面から S-05 へ戻したときの知らせ（?notice=…）。 */
+export const PROCEDURE_NOTICES = ["archived-edit", "archived-start"] as const;
+export type ProcedureNotice = (typeof PROCEDURE_NOTICES)[number];
+const NOTICE_MESSAGES: Record<ProcedureNotice, string> = {
+  "archived-edit": "アーカイブした手順書は編集できません。",
+  "archived-start": "この手順書はアーカイブされたため、実行を始められません。",
+};
+
 export const PROCEDURES_CRUMB = { label: "手順書", to: "/procedures" };
 
 /** 手順書が見つからない（S-16 と同じ出し方）。 */
@@ -112,7 +120,7 @@ export function ProcedureDetail({
   notice,
 }: {
   procedureId: string;
-  notice?: "archived-edit";
+  notice?: ProcedureNotice;
 }) {
   const me = useMe();
   const { data, error, isPending } = useQuery(procedureQueryOptions(procedureId));
@@ -200,9 +208,9 @@ export function ProcedureDetail({
         </div>
       </div>
 
-      {notice === "archived-edit" && (
+      {notice && (
         <div className="mt-4">
-          <ErrorBanner message="アーカイブした手順書は編集できません。" />
+          <ErrorBanner message={NOTICE_MESSAGES[notice]} />
         </div>
       )}
       {archived && (

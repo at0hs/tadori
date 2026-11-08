@@ -354,7 +354,7 @@ function ExecutionView({ detail }: { detail: ExecutionDetailResponse }) {
           )}
         </div>
         <aside className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:sticky lg:top-4">
-          <ProgressCard detail={detail} nextStepId={nextStepId} />
+          <ProgressCard detail={detail} ctx={ctx} nextStepId={nextStepId} />
           <VariablesCard
             detail={detail}
             operate={operate}

@@ -28,6 +28,8 @@ export function BanUserDialog({
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
+        // 送信中は閉じない（結果を見届けられるように）
+        if (!next && ban.isPending) return;
         if (!next) ban.reset();
         onOpenChange(next);
       }}
@@ -54,7 +56,9 @@ export function BanUserDialog({
         )}
         {ban.error && <ErrorBanner error={ban.error} />}
         <div className="mt-2 flex justify-end gap-2">
-          <AlertDialogCancel variant="ghost">キャンセル</AlertDialogCancel>
+          <AlertDialogCancel variant="ghost" disabled={ban.isPending}>
+            キャンセル
+          </AlertDialogCancel>
           <Button
             className="bg-destructive text-destructive-foreground hover:bg-destructive/85"
             disabled={ban.isPending}

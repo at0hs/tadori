@@ -41,7 +41,7 @@ import {
   useRejectExecution,
   useResubmitExecution,
 } from "./queries.ts";
-import { maskReason, type RenderContext, renderPieces } from "./render.ts";
+import { maskReason, type RenderContext, renderPlain } from "./render.ts";
 import { SecretInput } from "./secret-input.tsx";
 import { setSecrets } from "./secret-store.ts";
 import { MaskNote, stepLabel } from "./step-card.tsx";
@@ -374,12 +374,6 @@ export function SkipDialog({
   );
 }
 
-/** 置換した文字列（色付けなし） */
-const plain = (text: string, ctx: RenderContext) =>
-  renderPieces(text, ctx)
-    .map((p) => p.text)
-    .join("");
-
 export function FinishDialog({ env, onClose }: { env: Env; onClose: () => void }) {
   const finish = useFinishExecution(env.detail.id);
   const { steps, content } = env.detail;
@@ -390,7 +384,7 @@ export function FinishDialog({ env, onClose }: { env: Env; onClose: () => void }
   const rollback = steps.filter((s) => s.section === "rollback");
   const name = (s: ExecutionStep) => {
     const list = s.section === "main" ? main : rollback;
-    return `${stepLabel(s.section, list.indexOf(s))}「${plain(titles.get(s.stepId) ?? "", env.ctx)}」`;
+    return `${stepLabel(s.section, list.indexOf(s))}「${renderPlain(titles.get(s.stepId) ?? "", env.ctx)}」`;
   };
   const count = (k: ExecutionStep["status"]) => main.filter((s) => s.status === k).length;
   const rollbackDone = rollback.filter((s) => s.status === "done" || s.status === "failed");

@@ -32,6 +32,13 @@ export function renderPieces(text: string, ctx: RenderContext): ExecPiece[] {
   });
 }
 
+/** 置換した文字列（色付けはしない。秘密変数はマスクの規則どおり）。Markdown や一覧の題名に使う。 */
+export function renderPlain(text: string, ctx: RenderContext): string {
+  return renderPieces(text, ctx)
+    .map((p) => p.text)
+    .join("");
+}
+
 /** コピーする文字列。秘密変数は表示にかかわらず値で置き換え、値が入力されていなければ null。 */
 export function textForCopy(text: string, ctx: RenderContext): string | null {
   let out = "";

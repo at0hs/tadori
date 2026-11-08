@@ -68,6 +68,8 @@ export function PublishDialog({
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
+        // 送信中は閉じない（結果を見届けられるように）
+        if (!next && pending) return;
         if (!next) setTouched(false);
         onOpenChange(next);
       }}
@@ -107,7 +109,9 @@ export function PublishDialog({
           </div>
           {error ? <ErrorBanner error={error} /> : null}
           <div className="flex justify-end gap-2">
-            <AlertDialogCancel variant="ghost">キャンセル</AlertDialogCancel>
+            <AlertDialogCancel variant="ghost" disabled={pending}>
+              キャンセル
+            </AlertDialogCancel>
             <Button type="submit" disabled={pending}>
               公開する
             </Button>
@@ -137,7 +141,7 @@ export function DiscardDialog({
   onDiscard: () => void;
 }) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(next) => (next || !pending) && onOpenChange(next)}>
       <AlertDialogContent className="p-6 data-[size=default]:sm:max-w-md">
         <DialogHead icon={Trash2} tone="destructive" title="下書きを破棄しますか？">
           {unpublished ? (
@@ -156,7 +160,9 @@ export function DiscardDialog({
         )}
         {error ? <ErrorBanner error={error} /> : null}
         <div className="mt-2 flex justify-end gap-2">
-          <AlertDialogCancel variant="ghost">キャンセル</AlertDialogCancel>
+          <AlertDialogCancel variant="ghost" disabled={pending}>
+            キャンセル
+          </AlertDialogCancel>
           <Button className={DESTRUCTIVE} disabled={pending} onClick={onDiscard}>
             {unpublished ? "手順書ごと削除" : "下書きを破棄"}
           </Button>
