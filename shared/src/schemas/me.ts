@@ -8,7 +8,7 @@ export const meResponseSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   username: z.string(),
-  roles: z.array(roleSchema),
+  role: roleSchema,
   mustChangePassword: z.boolean(),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
@@ -29,7 +29,7 @@ export const homeDraftSchema = z.object({
 });
 export type HomeDraft = z.infer<typeof homeDraftSchema>;
 
-// GET /api/me/home の応答（api.md 4.2）。持っているロールの区画だけをキーごと返す（D-40）
+// GET /api/me/home の応答（api.md 4.2）。自分のロールで見られる区画だけをキーごと返す（D-40）
 export const meHomeResponseSchema = z.object({
   myExecutions: z.array(homeExecutionSchema).optional(),
   pendingApprovals: z.array(homeExecutionSchema).optional(),

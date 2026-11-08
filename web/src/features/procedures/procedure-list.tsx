@@ -54,19 +54,19 @@ const SORT_LABELS: Record<ProcedureSort, string> = {
 };
 
 // S-04 の中身（ui.md 7.2）。絞り込みは URL の検索条件に持つ（D-12）。
-// 未公開の手順書は API が作成者ロールの人にだけ返す（D-34）。作成者ロールのない人には、
+// 未公開の手順書は API が作業者以上のロールの人にだけ返す（D-34）。閲覧者には、
 // いつも0件になる「未公開」のカードを出さない（呼ぶ側は status を "unpublished" にしない）。
 export function ProcedureList({
   filter,
   onFilterChange,
-  isAuthor,
+  canEditDrafts,
 }: {
   filter: ProcedureFilter;
   onFilterChange: (next: Partial<ProcedureFilter>) => void;
-  isAuthor: boolean;
+  canEditDrafts: boolean;
 }) {
-  const canCreate = isAuthor;
-  const cards = isAuthor ? CARDS : CARDS.filter((c) => c.status !== "unpublished");
+  const canCreate = canEditDrafts;
+  const cards = canEditDrafts ? CARDS : CARDS.filter((c) => c.status !== "unpublished");
   const { data: list, error, isPending } = useQuery(procedureListQueryOptions);
   const counts = list ? procedureCounts(list) : undefined;
   const shown = list ? filterProcedures(list, filter) : [];

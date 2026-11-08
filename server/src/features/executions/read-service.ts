@@ -1,9 +1,10 @@
-import type {
-  ExecutionDetailResponse,
-  ExecutionSummary,
-  HomeExecution,
-  RunningExecution,
-  StepRecord,
+import {
+  can,
+  type ExecutionDetailResponse,
+  type ExecutionSummary,
+  type HomeExecution,
+  type RunningExecution,
+  type StepRecord,
 } from "@tadori/shared";
 import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
 import { db } from "../../db/client.ts";
@@ -147,7 +148,7 @@ async function readExecution(
       occurredAt: iso(x.occurredAt),
     })),
   };
-  if (actor.roles.includes("admin")) {
+  if (can(actor.role, "cancelAsAdmin")) {
     body.canAdminCancel = e.status === "running" && (await executorBlocked(ex, e.executorId));
   }
   return body;

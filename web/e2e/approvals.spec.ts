@@ -8,8 +8,8 @@ test.describe.configure({ mode: "serial" });
 const TEMP_PASSWORD = "E2e-approval-temp-passw0rd";
 const PASSWORD = "E2e-approval-passw0rd";
 const USERS = {
-  runner: { name: "依頼 四郎", username: "apprunner", roles: ["author", "executor"] },
-  checker: { name: "承認 五郎", username: "checker1", roles: ["approver", "executor"] },
+  runner: { name: "依頼 四郎", username: "apprunner", role: "worker" },
+  checker: { name: "承認 五郎", username: "checker1", role: "approver" },
 } as const;
 type Who = keyof typeof USERS;
 const stateOf = (who: Who) => `e2e/.auth/${USERS[who].username}.json`;
@@ -18,7 +18,6 @@ let admin: Page;
 const pages = {} as Record<Who, Page>;
 let procedureId = "";
 let approvedUrl = "";
-let adminId = "";
 
 /**
  * 管理者の API でユーザーを作り、初回のパスワード変更をしてログイン状態を保存する。
@@ -34,7 +33,7 @@ async function setupUser(browser: Browser, who: Who) {
       username: u.username,
       email: `${u.username}@example.test`,
       password: TEMP_PASSWORD,
-      roles: u.roles,
+      role: u.role,
     },
   });
   expect(res.status()).toBe(201);
@@ -79,13 +78,8 @@ test.beforeAll(async ({ browser }) => {
   admin = await pageAs(browser, ADMIN_STATE);
   await admin.goto("/");
   for (const who of Object.keys(USERS) as Who[]) await setupUser(browser, who);
-  // 2人目の承認者は、管理者に承認者ロールを一時的に付けて代わりにする（新しいユーザーを作ると
-  // パスワードの変更の回数制限にかかりやすいため）。afterAll で外す
-  adminId = (await (await admin.request.get("/api/me")).json()).id;
-  const granted = await admin.request.put(`/api/admin/users/${adminId}/roles/approver`, {
-    headers: { origin: BASE_URL },
-  });
-  expect(granted.ok()).toBe(true);
+  // 2人目の承認者は管理者が兼ねる（管理者は承認者以上、D-64。新しいユーザーを作ると
+  // パスワードの変更の回数制限にかかりやすいため）
 
   const runner = pages.runner;
   const step = (n: number, title: string) => ({
@@ -110,17 +104,15 @@ test.beforeAll(async ({ browser }) => {
   });
   expect(created.status()).toBe(201);
   procedureId = (await created.json()).id;
-  await runner.goto(`/procedures/${procedureId}/edit`);
-  await runner.getByRole("button", { name: "公開する" }).click();
-  await runner.getByLabel("変更理由").fill("最初の版");
-  await runner.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
-  await expect(runner).toHaveURL(`/procedures/${procedureId}`);
+  // 公開は承認者以上なので、作業者が作った下書きを管理者が公開する（D-65）
+  await admin.goto(`/procedures/${procedureId}/edit`);
+  await admin.getByRole("button", { name: "公開する" }).click();
+  await admin.getByLabel("変更理由").fill("最初の版");
+  await admin.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
+  await expect(admin).toHaveURL(`/procedures/${procedureId}`);
 });
 
 test.afterAll(async () => {
-  await admin.request.delete(`/api/admin/users/${adminId}/roles/approver`, {
-    headers: { origin: BASE_URL },
-  });
   for (const p of [admin, ...Object.values(pages)]) await p.context().close();
 });
 

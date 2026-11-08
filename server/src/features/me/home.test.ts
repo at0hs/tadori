@@ -23,22 +23,25 @@ async function setRun(id: string, values: Partial<typeof executions.$inferInsert
 const at = (s: string) => new Date(`2026-11-0${s}T00:00:00.000Z`);
 
 describe("GET /api/me/home", () => {
-  it("ロールのない区画は返さない", async () => {
-    await createUser({ username: "viewer01", roles: ["viewer"] });
-    await createUser({ username: "exec01", roles: ["executor"] });
-    await createUser({ username: "both01", roles: ["author", "approver"] });
+  it("D-40・D-64: 自分のロールで見られる区画だけを返す", async () => {
+    await createUser({ username: "viewer01", role: "viewer" });
+    await createUser({ username: "worker01", role: "worker" });
+    await createUser({ username: "appr01", role: "approver" });
+    await createUser({ username: "admin01", role: "admin" });
+    const all = ["drafts", "myExecutions", "pendingApprovals"];
     expect(await home(await login("viewer01"))).toEqual({});
-    expect(Object.keys(await home(await login("exec01")))).toEqual(["myExecutions"]);
-    expect(Object.keys(await home(await login("both01"))).sort()).toEqual([
+    expect(Object.keys(await home(await login("worker01"))).sort()).toEqual([
       "drafts",
-      "pendingApprovals",
+      "myExecutions",
     ]);
+    expect(Object.keys(await home(await login("appr01"))).sort()).toEqual(all);
+    expect(Object.keys(await home(await login("admin01"))).sort()).toEqual(all);
   });
 
   it("自分の実行は、実行中か差し戻しの自分の実行だけを最終更新の新しい順に返す", async () => {
-    const authorId = await createUser({ username: "author01", roles: ["author"] });
-    await createUser({ username: "exec01", roles: ["executor"] });
-    await createUser({ username: "exec02", roles: ["executor"] });
+    const authorId = await createUser({ username: "author01", role: "worker" });
+    await createUser({ username: "exec01", role: "worker" });
+    await createUser({ username: "exec02", role: "worker" });
     const me = await login("exec01");
     const other = await login("exec02");
     const procedureId = await publishedProcedure(authorId);
@@ -67,9 +70,9 @@ describe("GET /api/me/home", () => {
   });
 
   it("承認待ちは、実行者が自分でないものだけを終了日時の古い順に返す", async () => {
-    const authorId = await createUser({ username: "author01", roles: ["author"] });
-    await createUser({ username: "both01", roles: ["executor", "approver"] });
-    await createUser({ username: "exec02", roles: ["executor"] });
+    const authorId = await createUser({ username: "author01", role: "worker" });
+    await createUser({ username: "both01", role: "approver" });
+    await createUser({ username: "exec02", role: "worker" });
     const me = await login("both01");
     const other = await login("exec02");
     const procedureId = await publishedProcedure(authorId);
@@ -92,8 +95,8 @@ describe("GET /api/me/home", () => {
   });
 
   it("編集中の手順書は、下書きのある手順書（未公開を含む）を最終更新の新しい順に返す", async () => {
-    const authorId = await createUser({ username: "author01", roles: ["author"] });
-    const otherId = await createUser({ username: "author02", roles: ["author"] });
+    const authorId = await createUser({ username: "author01", role: "worker" });
+    const otherId = await createUser({ username: "author02", role: "worker" });
     const me = await login("author01");
 
     const editing = await insertProcedure({
@@ -136,7 +139,7 @@ describe("GET /api/me/home", () => {
   });
 
   it("パスワード変更が必要な人は呼べない", async () => {
-    await createUser({ username: "exec01", roles: ["executor"], mustChangePassword: true });
+    await createUser({ username: "exec01", role: "worker", mustChangePassword: true });
     const res = await request("/api/me/home", { cookie: await login("exec01") });
     expect(res.status).toBe(403);
     expect((await readJson(res)).code).toBe("PASSWORD_CHANGE_REQUIRED");

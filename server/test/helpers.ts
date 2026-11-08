@@ -50,23 +50,25 @@ export function request(path: string, opts: RequestOptions = {}) {
   );
 }
 
+/**
+ * テスト用のユーザーを作る。role を省くと閲覧者の行を入れ、null なら行を入れない
+ * （作成の途中で失敗した人、authorization.md 1章）。
+ */
 export async function createUser(opts: {
   username: string;
-  roles?: Role[];
+  role?: Role | null;
   mustChangePassword?: boolean;
 }) {
-  const roles = opts.roles ?? [];
+  const role = opts.role === undefined ? "viewer" : opts.role;
   const id = await createUserAccount({
     username: opts.username,
     name: `${opts.username} さん`,
     email: `${opts.username}@example.test`,
     password: PASSWORD,
-    isAdmin: roles.includes("admin"),
+    isAdmin: role === "admin",
     mustChangePassword: opts.mustChangePassword ?? false,
   });
-  if (roles.length > 0) {
-    await db.insert(userRoles).values(roles.map((role) => ({ userId: id, role })));
-  }
+  if (role !== null) await db.insert(userRoles).values({ userId: id, role, updatedBy: id });
   return id;
 }
 

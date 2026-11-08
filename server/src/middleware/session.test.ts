@@ -24,7 +24,7 @@ describe("GET /api/me とセッションの確認", () => {
   });
 
   it("自分の情報とロールを返す", async () => {
-    const id = await createUser({ username: "user01", roles: ["author", "executor"] });
+    const id = await createUser({ username: "user01", role: "worker" });
     const cookie = await login("user01");
     const res = await request("/api/me", { cookie });
     expect(res.status).toBe(200);
@@ -33,22 +33,28 @@ describe("GET /api/me とセッションの確認", () => {
       id,
       name: "user01 さん",
       username: "user01",
-      roles: expect.arrayContaining(["author", "executor"]),
+      role: "worker",
       mustChangePassword: false,
     });
-    expect(body.roles).toHaveLength(2);
+  });
+
+  it("ロールの行がないユーザーは閲覧者として扱う（authorization.md 1章）", async () => {
+    await createUser({ username: "user02", role: null });
+    const cookie = await login("user02");
+    const body = await readJson(await request("/api/me", { cookie }));
+    expect(body.role).toBe("viewer");
   });
 
   it("ロールはリクエストのたびに DB から読む（D-35）", async () => {
-    const id = await createUser({ username: "user01", roles: ["executor"] });
+    const id = await createUser({ username: "user01", role: "worker" });
     const cookie = await login("user01");
     await db.delete(userRoles).where(eq(userRoles.userId, id));
     const body = await readJson(await request("/api/me", { cookie }));
-    expect(body.roles).toEqual([]);
+    expect(body.role).toBe("viewer");
   });
 
   it("期限を延ばしたときの Set-Cookie を応答に移す（D-14 の補足）", async () => {
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    const id = await createUser({ username: "user01", role: "viewer" });
     const cookie = await login("user01");
     // updateAge を過ぎたことにする
     await db
@@ -74,7 +80,7 @@ describe("パスワード変更が必要なユーザー（D-14、authorization.m
   const callProbe = (cookie: string) => probe.request("/api/probe", { headers: { cookie } });
 
   it("GET /api/me は呼べ、mustChangePassword が真になっている", async () => {
-    await createUser({ username: "user01", roles: ["viewer"], mustChangePassword: true });
+    await createUser({ username: "user01", role: "viewer", mustChangePassword: true });
     const cookie = await login("user01");
     const res = await request("/api/me", { cookie });
     expect(res.status).toBe(200);
@@ -82,7 +88,7 @@ describe("パスワード変更が必要なユーザー（D-14、authorization.m
   });
 
   it("ほかの API は 403 PASSWORD_CHANGE_REQUIRED", async () => {
-    await createUser({ username: "user01", roles: ["viewer"], mustChangePassword: true });
+    await createUser({ username: "user01", role: "viewer", mustChangePassword: true });
     const cookie = await login("user01");
     const res = await callProbe(cookie);
     expect(res.status).toBe(403);
@@ -90,7 +96,7 @@ describe("パスワード変更が必要なユーザー（D-14、authorization.m
   });
 
   it("自分でパスワードを変更すると、ほかの API も呼べるようになる", async () => {
-    await createUser({ username: "user01", roles: ["viewer"], mustChangePassword: true });
+    await createUser({ username: "user01", role: "viewer", mustChangePassword: true });
     const cookie = await login("user01");
     const changed = await request("/api/auth/change-password", {
       cookie,
@@ -103,7 +109,7 @@ describe("パスワード変更が必要なユーザー（D-14、authorization.m
   });
 
   it("パスワードの変更に失敗したら、変更が必要なまま", async () => {
-    await createUser({ username: "user01", roles: ["viewer"], mustChangePassword: true });
+    await createUser({ username: "user01", role: "viewer", mustChangePassword: true });
     const cookie = await login("user01");
     const changed = await request("/api/auth/change-password", {
       cookie,

@@ -52,11 +52,11 @@ async function finishedRun(cookie: string, procedureId: string) {
 }
 
 async function setup() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  const executorId = await createUser({ username: "exec01", roles: ["executor"] });
-  const approverId = await createUser({ username: "appr01", roles: ["approver"] });
-  const bothId = await createUser({ username: "both01", roles: ["approver", "executor"] });
-  await createUser({ username: "admin01", roles: ["admin"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  const executorId = await createUser({ username: "exec01", role: "worker" });
+  const approverId = await createUser({ username: "appr01", role: "approver" });
+  const bothId = await createUser({ username: "both01", role: "approver" });
+  await createUser({ username: "admin01", role: "admin" });
   const executor = await login("exec01");
   const procedureId = await publishedProcedure(authorId);
   const { id, main } = await finishedRun(executor, procedureId);
@@ -132,21 +132,25 @@ describe("承認・差し戻し", () => {
     expect((await detail(executor, id)).approvalStatus).toBe("pending");
   });
 
-  it("F-08 AC: 自分の実行は承認・差し戻しできない", async () => {
-    const { both, procedureId } = await setup();
-    const { id } = await finishedRun(both, procedureId);
-    const a = await approve(both, id);
-    expect(a.status).toBe(403);
-    expect(await codeOf(a)).toBe("FORBIDDEN");
-    const r = await reject(both, id);
-    expect(r.status).toBe(403);
-    expect(await codeOf(r)).toBe("FORBIDDEN");
+  it("F-08 AC: 承認者・管理者も、自分の実行は承認・差し戻しできない（D-64 で承認者も実行できる）", async () => {
+    const { both, admin, procedureId } = await setup();
+    for (const cookie of [both, admin]) {
+      const { id } = await finishedRun(cookie, procedureId);
+      const a = await approve(cookie, id);
+      expect(a.status).toBe(403);
+      expect(await codeOf(a)).toBe("FORBIDDEN");
+      const r = await reject(cookie, id);
+      expect(r.status).toBe(403);
+      expect(await codeOf(r)).toBe("FORBIDDEN");
+    }
   });
 
-  it("承認者ロールのない人は承認できない", async () => {
+  it("D-64: 作業者と閲覧者は承認できず、管理者は他の人の実行を承認できる", async () => {
     const { admin, executor, id } = await setup();
-    expect((await approve(admin, id)).status).toBe(403);
+    await createUser({ username: "viewer01", role: "viewer" });
+    expect((await approve(await login("viewer01"), id)).status).toBe(403);
     expect((await approve(executor, id)).status).toBe(403);
+    expect((await approve(admin, id)).status).toBe(204);
   });
 
   it("承認待ちでなければ承認・差し戻しできない", async () => {
@@ -218,14 +222,14 @@ describe("差し戻し後と再依頼", () => {
     expect(await codeOf(res)).toBe("VALIDATION_FAILED");
   });
 
-  it("D-35: 本人以外と、実行者ロールを外された本人は再依頼できない", async () => {
+  it("D-35: 本人以外と、閲覧者に下げられた本人は再依頼できない", async () => {
     const { executorId, approver, both, executor, id } = await setup();
     expect((await reject(approver, id)).status).toBe(204);
     expect((await resubmit(approver, id)).status).toBe(403);
     const b = await resubmit(both, id);
     expect(b.status).toBe(403);
     expect(await codeOf(b)).toBe("FORBIDDEN");
-    await db.delete(userRoles).where(eq(userRoles.userId, executorId));
+    await db.update(userRoles).set({ role: "viewer" }).where(eq(userRoles.userId, executorId));
     expect((await resubmit(executor, id)).status).toBe(403);
   });
 

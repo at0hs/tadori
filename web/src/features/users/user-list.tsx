@@ -180,11 +180,7 @@ function UserRow({ user }: { user: AdminUser }) {
         <div className="truncate text-xs text-muted-foreground">{user.username}</div>
       </div>
       <div className="flex w-64 flex-wrap gap-1">
-        {user.roles.map((r) => (
-          <Badge key={r} variant="outline">
-            {ROLE_LABELS[r]}
-          </Badge>
-        ))}
+        <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>
       </div>
       <div className="w-40">
         <UserStatus user={user} />

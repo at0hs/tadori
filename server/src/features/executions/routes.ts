@@ -15,7 +15,7 @@ import {
 import { Hono } from "hono";
 import { type AppEnv, operatorOf } from "../../lib/hono.ts";
 import { jsonBody, pathParams } from "../../lib/validate.ts";
-import { requireRole } from "../../middleware/role.ts";
+import { requirePermission } from "../../middleware/role.ts";
 import { cancelExecution, finishExecution } from "./end-service.ts";
 import { contentDisposition } from "./export-format.ts";
 import { exportExecution } from "./export-service.ts";
@@ -46,13 +46,13 @@ export const executionRoutes = new Hono<AppEnv>()
       "Cache-Control": "no-store",
     });
   })
-  .post("/", requireRole("executor"), jsonBody(startExecutionRequestSchema), async (c) => {
+  .post("/", requirePermission("execute"), jsonBody(startExecutionRequestSchema), async (c) => {
     const body: StartExecutionResponse = await startExecution(operatorOf(c), c.req.valid("json"));
     return c.json(body, 201);
   })
   .put(
     "/:id/variables",
-    requireRole("executor"),
+    requirePermission("execute"),
     pathParams(executionIdParamSchema),
     jsonBody(updateVariablesRequestSchema),
     async (c) => {
@@ -62,7 +62,7 @@ export const executionRoutes = new Hono<AppEnv>()
   )
   .post(
     "/:id/steps/:stepId/status-changes",
-    requireRole("executor"),
+    requirePermission("execute"),
     pathParams(stepParamSchema),
     jsonBody(stepStatusChangeRequestSchema),
     async (c) => {
@@ -73,7 +73,7 @@ export const executionRoutes = new Hono<AppEnv>()
   )
   .post(
     "/:id/steps/:stepId/comments",
-    requireRole("executor"),
+    requirePermission("execute"),
     pathParams(stepParamSchema),
     jsonBody(commentRequestSchema),
     async (c) => {
@@ -84,7 +84,7 @@ export const executionRoutes = new Hono<AppEnv>()
   )
   .post(
     "/:id/steps/:stepId/evidences",
-    requireRole("executor"),
+    requirePermission("execute"),
     pathParams(stepParamSchema),
     jsonBody(evidenceRequestSchema),
     async (c) => {
@@ -93,16 +93,21 @@ export const executionRoutes = new Hono<AppEnv>()
       return c.body(null, 204);
     },
   )
-  .post("/:id/finish", requireRole("executor"), pathParams(executionIdParamSchema), async (c) => {
-    const body: FinishExecutionResponse = await finishExecution(
-      operatorOf(c),
-      c.req.valid("param").id,
-    );
-    return c.json(body);
-  })
+  .post(
+    "/:id/finish",
+    requirePermission("execute"),
+    pathParams(executionIdParamSchema),
+    async (c) => {
+      const body: FinishExecutionResponse = await finishExecution(
+        operatorOf(c),
+        c.req.valid("param").id,
+      );
+      return c.json(body);
+    },
+  )
   .post(
     "/:id/cancel",
-    requireRole("executor", "admin"),
+    requirePermission("execute"),
     pathParams(executionIdParamSchema),
     jsonBody(cancelRequestSchema),
     async (c) => {

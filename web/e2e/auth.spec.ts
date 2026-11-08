@@ -62,17 +62,19 @@ test.describe("ログインしている", () => {
     page,
     context,
   }) => {
-    await page.goto("/admin/users");
-    await page.getByRole("link", { name: /管理 花子/ }).click();
-    await expect(page).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}$/);
-    const detail = new URL(page.url()).pathname;
-    // 画面の読み込みが終わってから切る（操作の途中で切れた場面にする）
-    await expect(page.getByRole("switch", { name: "閲覧者" })).toBeVisible();
+    // ユーザーの作成の入力を終えてから切る（操作の途中で切れた場面にする）
+    const form = "/admin/users/new";
+    await page.goto(form);
+    await page.getByLabel("名前", { exact: true }).fill("途中 切れ子");
+    await page.getByLabel("ユーザー名", { exact: true }).fill("expired");
+    await page.getByLabel("メールアドレス", { exact: true }).fill("expired@example.test");
+    await page.getByLabel("仮のパスワード", { exact: true }).fill("Temp-passw0rd-09");
+    await page.getByRole("radio", { name: /^閲覧者/ }).click();
     await context.clearCookies();
-    await page.getByRole("switch", { name: "閲覧者" }).click();
-    await expect(page).toHaveURL(`/login?redirect=${encodeURIComponent(detail)}`);
+    await page.getByRole("button", { name: "作成する" }).click();
+    await expect(page).toHaveURL(`/login?redirect=${encodeURIComponent(form)}`);
     await login(page, "admin", ADMIN_PASSWORD);
-    await expect(page).toHaveURL(detail);
+    await expect(page).toHaveURL(form);
   });
 
   test("テーマをダークにすると、再読み込みしてもダークのまま", async ({ page }) => {

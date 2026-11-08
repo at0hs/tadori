@@ -7,8 +7,8 @@ beforeEach(resetDb);
 
 describe("同時の操作", () => {
   it("D-46: 同じステップへ同じ from で同時に送ると、片方だけが通る", async () => {
-    const authorId = await createUser({ username: "author01", roles: ["author"] });
-    await createUser({ username: "exec01", roles: ["executor"] });
+    const authorId = await createUser({ username: "author01", role: "worker" });
+    await createUser({ username: "exec01", role: "worker" });
     const executor = await login("exec01");
     const id = await startRun(executor, await publishedProcedure(authorId));
     const stepId = (await detail(executor, id)).steps[0].stepId as string;

@@ -13,7 +13,7 @@ export const meRoutes = new Hono<AppEnv>()
       id: actor.id,
       name: actor.name,
       username: actor.username,
-      roles: actor.roles,
+      role: actor.role,
       mustChangePassword: actor.mustChangePassword,
     };
     return c.json(body);

@@ -8,7 +8,7 @@ import { assertOwner, type ExecutionRow, lockExecution } from "../executions/que
 
 // 承認・差し戻し・再依頼（state-transitions.md 5章、authorization.md 3.4）。
 // 実行の行をロックしてから確かめ、executions と approval_events を同じトランザクションで更新する
-// （data-model.md 4.3）。承認者ロールの確認はルートの requireRole で済んでいる。
+// （data-model.md 4.3）。承認者以上のロールの確認はルートの requirePermission で済んでいる。
 // コメントは操作ログに出さない（conventions.md 6.3）。
 
 /** 職務分離：自分が実行者である実行は承認・差し戻しできない（F-08 の AC）。 */

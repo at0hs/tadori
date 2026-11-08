@@ -1,0 +1,144 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "eb412e97-bcbc-412d-a53f-26879f2725f6",
+  "prevIds": [
+    "c7263b3f-2745-4c0f-ade5-355c4470ba67"
+  ],
+  "footprints": [
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "user_roles",
+        "granted_by"
+      ],
+      "writes": [
+        "s|col|public.user_roles.granted_by",
+        "n|col|public.user_roles.granted_by",
+        "s|col|public.user_roles.updated_by",
+        "n|col|public.user_roles.updated_by"
+      ],
+      "reads": [
+        "n|tbl|public.user_roles",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "user_roles",
+        "granted_at"
+      ],
+      "writes": [
+        "s|col|public.user_roles.granted_at",
+        "n|col|public.user_roles.granted_at",
+        "s|col|public.user_roles.updated_at",
+        "n|col|public.user_roles.updated_at"
+      ],
+      "reads": [
+        "n|tbl|public.user_roles",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_pk",
+      "statementTarget": [
+        "table",
+        "public",
+        "user_roles"
+      ],
+      "writes": [
+        "s|pk|public.user_roles"
+      ],
+      "reads": [
+        "n|tbl|public.user_roles",
+        "n|sch|public",
+        "n|col|public.user_roles.user_id"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.user_roles.role.user_id"
+      ],
+      "sqlHash": "e7d5470c05115ed6"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "user_roles",
+        "updated_by"
+      ],
+      "writes": [
+        "s|colprop|public.user_roles.updated_by.notNull"
+      ],
+      "reads": [
+        "n|tbl|public.user_roles",
+        "n|sch|public",
+        "n|col|public.user_roles.updated_by"
+      ],
+      "sqlHash": "5ee34632a872502e"
+    },
+    {
+      "statementType": "alter_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "user_roles"
+      ],
+      "writes": [
+        "s|ck|public.user_roles.user_roles_role_check"
+      ],
+      "reads": [
+        "n|tbl|public.user_roles",
+        "n|sch|public",
+        "n|col|public.user_roles.role",
+        "e|col|public.user_roles.role"
+      ],
+      "sqlHash": "f0bf956dba45a473"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"user_roles\",\"granted_by\"]",
+      "set": {
+        "name": "updated_by"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"user_roles\",\"granted_at\"]",
+      "set": {
+        "name": "updated_at"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"user_roles\",\"updated_by\"]",
+      "set": {
+        "notNull": true
+      }
+    },
+    {
+      "op": "alter",
+      "key": "pks\u0000[\"public\",\"user_roles\",\"user_roles_pkey\"]",
+      "set": {
+        "columns": [
+          "user_id"
+        ]
+      }
+    },
+    {
+      "op": "alter",
+      "key": "checks\u0000[\"public\",\"user_roles\",\"user_roles_role_check\"]",
+      "set": {
+        "value": "role in ('admin', 'approver', 'worker', 'viewer')"
+      }
+    }
+  ]
+}

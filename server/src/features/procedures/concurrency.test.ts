@@ -6,8 +6,8 @@ import { sampleContent } from "../../../test/procedures.ts";
 beforeEach(resetDb);
 
 async function setup() {
-  await createUser({ username: "author01", roles: ["author"] });
-  await createUser({ username: "author02", roles: ["author"] });
+  await createUser({ username: "author01", role: "approver" });
+  await createUser({ username: "author02", role: "approver" });
   const a = await login("author01");
   const b = await login("author02");
   const res = await request("/api/procedures", { cookie: a, json: { content: sampleContent() } });

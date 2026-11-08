@@ -498,7 +498,7 @@ export function CancelDialog({
       title={admin ? "管理者としてこの実行を中止しますか？" : "この実行を中止しますか？"}
       description={
         admin
-          ? `実行者の ${env.detail.executor.name} は無効化されているか、実行者ロールを持っていないため、管理者が中止できます。元に戻せません。`
+          ? `実行者の ${env.detail.executor.name} は無効化されているか、ロールが閲覧者のため、管理者が中止できます。元に戻せません。`
           : "中止すると、ステップの状態は変えられず、承認にも進みません。元に戻せません。"
       }
       onSubmit={(e) => {
@@ -507,7 +507,7 @@ export function CancelDialog({
         setError(message);
         if (message) return;
         // 送る前にマスクする（D-56）。管理者として中止するときも、このタブに値があれば隠す
-        // （管理者が実行者を兼ねていて、実行者ロールを外された場合など）
+        // （管理者が別のタブで実行者として値を入れていた場合など）
         const body = maskReason(reason, env.ctx.secrets);
         cancel.mutate(body, {
           onSuccess: () => env.onResult(),

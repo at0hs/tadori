@@ -8,8 +8,8 @@ test.describe.configure({ mode: "serial" });
 const TEMP_PASSWORD = "E2e-home-temp-passw0rd";
 const PASSWORD = "E2e-home-passw0rd";
 const USERS = {
-  runner: { name: "ホーム 六郎", username: "homerunner", roles: ["author", "executor"] },
-  checker: { name: "ホーム 七子", username: "homechecker", roles: ["approver"] },
+  runner: { name: "ホーム 六郎", username: "homerunner", role: "worker" },
+  checker: { name: "ホーム 七子", username: "homechecker", role: "approver" },
 } as const;
 type Who = keyof typeof USERS;
 const stateOf = (who: Who) => `e2e/.auth/${USERS[who].username}.json`;
@@ -29,7 +29,7 @@ async function setupUser(browser: Browser, who: Who) {
       username: u.username,
       email: `${u.username}@example.test`,
       password: TEMP_PASSWORD,
-      roles: u.roles,
+      role: u.role,
     },
   });
   expect(res.status()).toBe(201);
@@ -92,11 +92,12 @@ test.beforeAll(async ({ browser }) => {
   });
   expect(created.status()).toBe(201);
   procedureId = (await created.json()).id;
-  await runner.goto(`/procedures/${procedureId}/edit`);
-  await runner.getByRole("button", { name: "公開する" }).click();
-  await runner.getByLabel("変更理由").fill("最初の版");
-  await runner.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
-  await expect(runner).toHaveURL(`/procedures/${procedureId}`);
+  // 公開は承認者以上なので、作業者が作った下書きを管理者が公開する（D-65）
+  await admin.goto(`/procedures/${procedureId}/edit`);
+  await admin.getByRole("button", { name: "公開する" }).click();
+  await admin.getByLabel("変更理由").fill("最初の版");
+  await admin.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
+  await expect(admin).toHaveURL(`/procedures/${procedureId}`);
 });
 
 test.afterAll(async () => {
@@ -109,7 +110,8 @@ test("実行者は自分の実行中の実行をホームから開ける", async
   await runner.goto("/");
   const mine = runner.getByRole("region", { name: "自分の実行" });
   await expect(mine.getByRole("heading", { name: "自分の実行" })).toBeVisible();
-  // 承認者ロールがないので、承認待ちの区画は出ない
+  // 作業者には自分の実行と編集中の手順書の2区画で、承認待ちは出ない（ui.md 9章、D-64）
+  await expect(runner.getByRole("region", { name: "編集中の手順書" })).toBeVisible();
   await expect(runner.getByRole("region", { name: "承認待ち" })).toHaveCount(0);
   await mine
     .getByRole("link", { name: new RegExp(TITLE) })
@@ -161,9 +163,27 @@ test("承認すると承認待ちの区画から消える", async () => {
   await expect(row(checker)).toHaveCount(0);
 });
 
-test("区画のロールがない人には一覧への案内を出す", async () => {
-  await admin.goto("/");
-  await expect(admin.getByText("手順書と実行は、それぞれの一覧から見られます")).toBeVisible();
-  await admin.getByRole("link", { name: "実行の一覧" }).click();
-  await expect(admin).toHaveURL("/executions");
+test("承認者には3区画すべて、閲覧者には一覧への案内を出す", async () => {
+  const { checker } = pages;
+  await checker.goto("/");
+  for (const name of ["自分の実行", "承認待ち", "編集中の手順書"]) {
+    await expect(checker.getByRole("region", { name })).toBeVisible();
+  }
+
+  // 新しいユーザーは作らず、承認者を一時的に閲覧者にする
+  const checkerId = (await (await checker.request.get("/api/me")).json()).id;
+  const setRole = (role: string) =>
+    admin.request.put(`/api/admin/users/${checkerId}/role`, {
+      headers: { origin: BASE_URL },
+      data: { role },
+    });
+  expect((await setRole("viewer")).ok()).toBe(true);
+  try {
+    await checker.goto("/");
+    await expect(checker.getByText("手順書と実行は、それぞれの一覧から見られます")).toBeVisible();
+    await checker.getByRole("link", { name: "実行の一覧" }).click();
+    await expect(checker).toHaveURL("/executions");
+  } finally {
+    expect((await setRole("approver")).ok()).toBe(true);
+  }
 });

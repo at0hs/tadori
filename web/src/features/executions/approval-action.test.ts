@@ -13,47 +13,57 @@ const detail = (o: Partial<ExecutionDetailResponse>) =>
     ...o,
   }) as ExecutionDetailResponse;
 
-const me = (id: string, roles: Role[]): MeResponse => ({
+const me = (id: string, role: Role): MeResponse => ({
   id,
   name: "誰か",
   username: "someone",
-  roles,
+  role,
   mustChangePassword: false,
 });
 
 test("承認待ち・承認者・実行者でない → review", () => {
-  expect(approvalAction(detail({}), me(OTHER, ["approver"]))).toBe("review");
+  expect(approvalAction(detail({}), me(OTHER, "approver"))).toBe("review");
 });
 
-test("承認待ち・承認者だが自分の実行 → null", () => {
-  expect(approvalAction(detail({}), me(EXECUTOR, ["approver", "executor"]))).toBeNull();
+test("承認待ち・管理者・実行者でない → review（D-64）", () => {
+  expect(approvalAction(detail({}), me(OTHER, "admin"))).toBe("review");
 });
 
-test("承認待ち・承認者ロールなし → null", () => {
-  expect(approvalAction(detail({}), me(OTHER, ["executor", "admin"]))).toBeNull();
+test("承認待ち・承認者だが自分の実行 → null（職務分離）", () => {
+  expect(approvalAction(detail({}), me(EXECUTOR, "approver"))).toBeNull();
 });
 
-test("差し戻し・本人（実行者ロールあり） → resubmit", () => {
-  expect(approvalAction(detail({ approvalStatus: "rejected" }), me(EXECUTOR, ["executor"]))).toBe(
+test("承認待ち・作業者 → null", () => {
+  expect(approvalAction(detail({}), me(OTHER, "worker"))).toBeNull();
+});
+
+test("差し戻し・本人（作業者） → resubmit", () => {
+  expect(approvalAction(detail({ approvalStatus: "rejected" }), me(EXECUTOR, "worker"))).toBe(
     "resubmit",
   );
 });
 
-test("差し戻し・本人だが実行者ロールなし → null", () => {
-  expect(
-    approvalAction(detail({ approvalStatus: "rejected" }), me(EXECUTOR, ["approver"])),
-  ).toBeNull();
+test("差し戻し・本人（承認者）→ resubmit（承認は出さない）", () => {
+  expect(approvalAction(detail({ approvalStatus: "rejected" }), me(EXECUTOR, "approver"))).toBe(
+    "resubmit",
+  );
+});
+
+test("差し戻し・本人だが閲覧者に下げられた → null", () => {
+  expect(approvalAction(detail({ approvalStatus: "rejected" }), me(EXECUTOR, "viewer"))).toBeNull();
 });
 
 test("差し戻し・承認者（別人） → null", () => {
-  expect(
-    approvalAction(detail({ approvalStatus: "rejected" }), me(OTHER, ["approver", "executor"])),
-  ).toBeNull();
+  expect(approvalAction(detail({ approvalStatus: "rejected" }), me(OTHER, "approver"))).toBeNull();
+});
+
+test("閲覧者には何も出さない", () => {
+  expect(approvalAction(detail({}), me(OTHER, "viewer"))).toBeNull();
 });
 
 test("承認済み・実行中・中止 → null", () => {
-  const reviewer = me(OTHER, ["approver"]);
-  const owner = me(EXECUTOR, ["executor"]);
+  const reviewer = me(OTHER, "approver");
+  const owner = me(EXECUTOR, "worker");
   for (const d of [
     detail({ approvalStatus: "approved" }),
     detail({ status: "running", approvalStatus: null }),

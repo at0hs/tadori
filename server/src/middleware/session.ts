@@ -1,4 +1,4 @@
-import { ROLES, roleSchema } from "@tadori/shared";
+import { roleSchema } from "@tadori/shared";
 import { eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { getSession } from "../auth/session.ts";
@@ -13,7 +13,8 @@ export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
   if (!session) throw new AppError("UNAUTHENTICATED");
 
   // ロールはリクエストのたびに DB から読み、キャッシュしない（D-35）。
-  const rows = await db
+  // 行がなければ閲覧者として扱う（authorization.md 1章）。
+  const [row] = await db
     .select({ role: userRoles.role })
     .from(userRoles)
     .where(eq(userRoles.userId, session.user.id));
@@ -22,10 +23,7 @@ export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
     id: session.user.id,
     name: session.user.name,
     username: session.user.username ?? "",
-    // ROLES の順に並べる（管理者の API と揃える）
-    roles: rows
-      .map((r) => roleSchema.parse(r.role))
-      .sort((a, b) => ROLES.indexOf(a) - ROLES.indexOf(b)),
+    role: row ? roleSchema.parse(row.role) : "viewer",
     mustChangePassword: session.user.mustChangePassword === true,
   });
 

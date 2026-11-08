@@ -18,7 +18,7 @@ import { isApiError } from "@/lib/api.ts";
 import { BanUserDialog } from "./ban-user-dialog.tsx";
 import { userQueryOptions } from "./queries.ts";
 import { ResetPasswordDialog } from "./reset-password-dialog.tsx";
-import { RoleSwitches } from "./role-switches.tsx";
+import { RoleSection } from "./role-section.tsx";
 import { RunningExecutions } from "./running-executions.tsx";
 import { UserAvatar, UserStatus } from "./user-status.tsx";
 
@@ -106,7 +106,7 @@ export function UserDetail({ userId }: { userId: string }) {
         </div>
       )}
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
-        <RoleSwitches user={user} isSelf={isSelf} runningCount={runningExecutions.length} />
+        <RoleSection user={user} isSelf={isSelf} runningCount={runningExecutions.length} />
         <RunningExecutions executions={runningExecutions} />
       </div>
       {!isSelf && (

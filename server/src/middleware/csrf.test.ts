@@ -11,7 +11,7 @@ const signIn = (headers: Record<string, string>) =>
 
 describe("CSRF：出どころの確認（D-61）", () => {
   beforeEach(async () => {
-    await createUser({ username: "user01", roles: ["viewer"] });
+    await createUser({ username: "user01", role: "viewer" });
   });
 
   it("別のオリジンからの JSON の POST は 403", async () => {

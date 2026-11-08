@@ -1,4 +1,4 @@
-import { ROLES, type Role } from "@tadori/shared";
+import type { Role } from "@tadori/shared";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publishedProcedure, startRun } from "../../../test/executions.ts";
@@ -14,6 +14,7 @@ import {
 } from "../../../test/helpers.ts";
 import { db } from "../../db/client.ts";
 import { user } from "../../db/schema/auth.ts";
+import { userRoles } from "../../db/schema/users.ts";
 
 beforeEach(resetDb);
 afterEach(() => {
@@ -25,13 +26,18 @@ const TEMP_PASSWORD = "Temp-passw0rd-dummy";
 
 /** 管理者を作ってログインし、その ID と Cookie を返す。 */
 async function adminSession(username = "admin01") {
-  const id = await createUser({ username, roles: ["admin"] });
+  const id = await createUser({ username, role: "admin" });
   return { id, cookie: await login(username) };
 }
 
-async function rolesOf(cookie: string, userId: string): Promise<Role[]> {
+async function roleOf(cookie: string, userId: string): Promise<Role> {
   const res = await request(`/api/admin/users/${userId}`, { cookie });
-  return (await readJson(res)).user.roles;
+  return (await readJson(res)).user.role;
+}
+
+/** PUT /api/admin/users/{id}/role（D-64） */
+function setRole(cookie: string, userId: string, role: string) {
+  return request(`/api/admin/users/${userId}/role`, { method: "PUT", cookie, json: { role } });
 }
 
 const newUserBody = (overrides: Record<string, unknown> = {}) => ({
@@ -39,7 +45,7 @@ const newUserBody = (overrides: Record<string, unknown> = {}) => ({
   username: "newuser01",
   email: "newuser01@example.test",
   password: TEMP_PASSWORD,
-  roles: ["executor"],
+  role: "worker",
   ...overrides,
 });
 
@@ -50,15 +56,14 @@ describe("F-01 AC: ロールのない操作は API 上でも拒否される", ()
       ["GET", "/api/admin/users", undefined],
       ["GET", `/api/admin/users/${target}`, undefined],
       ["POST", "/api/admin/users", newUserBody()],
-      ["PUT", `/api/admin/users/${target}/roles/admin`, undefined],
-      ["DELETE", `/api/admin/users/${target}/roles/viewer`, undefined],
+      ["PUT", `/api/admin/users/${target}/role`, { role: "admin" }],
       ["POST", `/api/admin/users/${target}/ban`, undefined],
       ["POST", `/api/admin/users/${target}/password-reset`, { password: TEMP_PASSWORD }],
     ] as const;
 
-  it("管理者ロール以外のロールをすべて持っていても、管理者の API は FORBIDDEN", async () => {
-    const target = await createUser({ username: "target01", roles: ["viewer"] });
-    await createUser({ username: "user01", roles: ROLES.filter((r) => r !== "admin") });
+  it("管理者のすぐ下の承認者でも、管理者の API は FORBIDDEN", async () => {
+    const target = await createUser({ username: "target01", role: "viewer" });
+    await createUser({ username: "user01", role: "approver" });
     const cookie = await login("user01");
 
     for (const [method, path, json] of endpoints(target)) {
@@ -75,9 +80,9 @@ describe("F-01 AC: ロールのない操作は API 上でも拒否される", ()
     expect(created).toBeUndefined();
   });
 
-  it("ロールのないユーザーも FORBIDDEN", async () => {
+  it("ロールの行がないユーザーも FORBIDDEN", async () => {
     const target = await createUser({ username: "target01" });
-    await createUser({ username: "user01" });
+    await createUser({ username: "user01", role: null });
     const cookie = await login("user01");
     for (const [method, path, json] of endpoints(target)) {
       const res = await request(path, { method, cookie, json });
@@ -94,61 +99,57 @@ describe("F-01 AC: ロールのない操作は API 上でも拒否される", ()
   });
 
   it("パスワード変更が必要な管理者は PASSWORD_CHANGE_REQUIRED", async () => {
-    await createUser({ username: "admin01", roles: ["admin"], mustChangePassword: true });
+    await createUser({ username: "admin01", role: "admin", mustChangePassword: true });
     const cookie = await login("admin01");
     const res = await request("/api/admin/users", { cookie });
     expect(res.status).toBe(403);
     expect((await readJson(res)).code).toBe("PASSWORD_CHANGE_REQUIRED");
   });
 
-  it("管理者ロールを剥奪すると、次のリクエストから拒否される（D-35）", async () => {
+  it("管理者を作業者に下げると、次のリクエストから拒否され、user.role も食い違わない（D-35、D-33）", async () => {
     const admin = await adminSession("admin01");
     const other = await adminSession("admin02");
     expect((await request("/api/admin/users", { cookie: other.cookie })).status).toBe(200);
 
-    const res = await request(`/api/admin/users/${other.id}/roles/admin`, {
-      method: "DELETE",
-      cookie: admin.cookie,
-    });
+    const res = await setRole(admin.cookie, other.id, "worker");
     expect(res.status).toBe(204);
     expect((await request("/api/admin/users", { cookie: other.cookie })).status).toBe(403);
+    expect(await adminColumnMismatches()).toEqual([]);
   });
 });
 
 describe("ユーザーの一覧・詳細（S-13、S-15）", () => {
   it("一覧に、名前・ユーザー名・メールアドレス・ロール・有効かどうか・パスワード変更が必要かが出る", async () => {
     const admin = await adminSession();
-    const id = await createUser({
-      username: "user01",
-      roles: ["viewer", "executor"],
-      mustChangePassword: true,
-    });
+    const id = await createUser({ username: "user01", role: "worker", mustChangePassword: true });
+    const noRow = await createUser({ username: "user02", role: null });
 
     const res = await request("/api/admin/users", { cookie: admin.cookie });
     expect(res.status).toBe(200);
     const { users } = await readJson(res);
-    expect(users).toHaveLength(2);
+    expect(users).toHaveLength(3);
     const found = users.find((u: { id: string }) => u.id === id);
     expect(found).toEqual({
       id,
       name: "user01 さん",
       username: "user01",
       email: "user01@example.test",
-      // ロールは ROLES の順に並べる
-      roles: ["executor", "viewer"],
+      role: "worker",
       banned: false,
       mustChangePassword: true,
       createdAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.*Z$/),
     });
+    // 行のないユーザーは閲覧者として出す（authorization.md 1章）
+    expect(users.find((u: { id: string }) => u.id === noRow).role).toBe("viewer");
   });
 
   it("詳細を返す。いないユーザーと、UUID でない ID は NOT_FOUND", async () => {
     const admin = await adminSession();
-    const id = await createUser({ username: "user01", roles: ["author"] });
+    const id = await createUser({ username: "user01", role: "approver" });
 
     const res = await request(`/api/admin/users/${id}`, { cookie: admin.cookie });
     expect(res.status).toBe(200);
-    expect((await readJson(res)).user).toMatchObject({ id, username: "user01", roles: ["author"] });
+    expect((await readJson(res)).user).toMatchObject({ id, username: "user01", role: "approver" });
 
     for (const bad of [UNKNOWN_ID, "not-a-uuid"]) {
       const r = await request(`/api/admin/users/${bad}`, { cookie: admin.cookie });
@@ -158,9 +159,9 @@ describe("ユーザーの一覧・詳細（S-13、S-15）", () => {
   });
   it("S-15: ユーザーの詳細に、そのユーザーの実行中の実行が出る", async () => {
     const admin = await adminSession();
-    const authorId = await createUser({ username: "author01", roles: ["author"] });
-    const execId = await createUser({ username: "exec01", roles: ["executor"] });
-    await createUser({ username: "exec02", roles: ["executor"] });
+    const authorId = await createUser({ username: "author01", role: "worker" });
+    const execId = await createUser({ username: "exec01", role: "worker" });
+    await createUser({ username: "exec02", role: "worker" });
     const procedureId = await publishedProcedure(authorId);
     const mine = await login("exec01");
     const running = await startRun(mine, procedureId);
@@ -194,7 +195,7 @@ describe("ユーザーの作成（S-14）", () => {
 
     const res = await request("/api/admin/users", {
       cookie: admin.cookie,
-      json: newUserBody({ roles: ["executor", "approver"] }),
+      json: newUserBody({ role: "approver" }),
     });
     expect(res.status).toBe(201);
     const { id } = await readJson(res);
@@ -205,38 +206,53 @@ describe("ユーザーの作成（S-14）", () => {
       id,
       name: "新しい 利用者",
       username: "newuser01",
-      roles: ["executor", "approver"],
+      role: "approver",
       mustChangePassword: true,
     });
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
+    expect(rows).toEqual([expect.objectContaining({ role: "approver", updatedBy: admin.id })]);
 
     expect(logs.filter((l) => l.event === "user.created")).toEqual([
       expect.objectContaining({
         actorId: admin.id,
         target: { type: "user", id },
-        roles: ["executor", "approver"],
+        role: "approver",
       }),
     ]);
     // 仮のパスワードはログに出さない（F-10 AC）
     expect(JSON.stringify(logs)).not.toContain(TEMP_PASSWORD);
   });
 
-  it("ロールなしでも作成できる", async () => {
+  it("ロールは1つ必須。ない・古い形（配列）・知らない値は VALIDATION_FAILED", async () => {
     const admin = await adminSession();
-    const res = await request("/api/admin/users", {
-      cookie: admin.cookie,
-      json: newUserBody({ roles: [] }),
-    });
-    expect(res.status).toBe(201);
-    expect(await rolesOf(admin.cookie, (await readJson(res)).id)).toEqual([]);
+    const { role: _, ...withoutRole } = newUserBody();
+    const missing = await request("/api/admin/users", { cookie: admin.cookie, json: withoutRole });
+    expect(missing.status).toBe(400);
+    expect((await readJson(missing)).errors).toEqual([
+      { path: "role", message: "ロールを選んでください。" },
+    ]);
+
+    for (const bad of [{ roles: ["worker"] }, { role: "author" }, { role: ["worker"] }]) {
+      const res = await request("/api/admin/users", {
+        cookie: admin.cookie,
+        json: { ...withoutRole, ...bad },
+      });
+      expect(res.status, JSON.stringify(bad)).toBe(400);
+    }
+    const [created] = await db.select().from(user).where(eq(user.username, "newuser01"));
+    expect(created).toBeUndefined();
   });
 
-  it("D-33: 管理者ロールを付けて作ると user.role が admin、付けなければ user になる", async () => {
+  it("D-33: 管理者で作ると user.role が admin、それ以外なら user になる", async () => {
     const admin = await adminSession();
     await request("/api/admin/users", {
       cookie: admin.cookie,
-      json: newUserBody({ username: "newadmin", email: "newadmin@example.test", roles: ["admin"] }),
+      json: newUserBody({ username: "newadmin", email: "newadmin@example.test", role: "admin" }),
     });
-    await request("/api/admin/users", { cookie: admin.cookie, json: newUserBody() });
+    await request("/api/admin/users", {
+      cookie: admin.cookie,
+      json: newUserBody({ role: "approver" }),
+    });
 
     const rows = await db.select({ username: user.username, role: user.role }).from(user);
     expect(rows).toEqual(
@@ -282,7 +298,7 @@ describe("ユーザーの作成（S-14）", () => {
         username: "ab",
         email: "not-an-email",
         password: "short",
-        roles: ["executor", "executor", "superuser"],
+        role: "superuser",
       },
     });
     expect(res.status).toBe(400);
@@ -290,7 +306,7 @@ describe("ユーザーの作成（S-14）", () => {
     expect(body.code).toBe("VALIDATION_FAILED");
     const paths = body.errors.map((e: { path: string }) => e.path);
     expect(paths).toEqual(
-      expect.arrayContaining(["name", "username", "email", "password", "roles.2"]),
+      expect.arrayContaining(["name", "username", "email", "password", "role"]),
     );
   });
 
@@ -316,109 +332,104 @@ describe("ユーザーの作成（S-14）", () => {
   });
 });
 
-describe("ロールの付与・剥奪", () => {
-  it("付与・剥奪でき、すでにその状態なら何もせずに成功する。操作ログは変わったときだけ出す", async () => {
+describe("ロールの変更（D-64）", () => {
+  it("変更でき、同じロールなら何もせずに成功する。操作ログは変わったときだけ、変更前と変更後を付けて出す", async () => {
     const admin = await adminSession();
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    const id = await createUser({ username: "user01", role: "worker" });
     const logs = captureOperationLogs();
-    const path = `/api/admin/users/${id}/roles/executor`;
 
-    expect((await request(path, { method: "PUT", cookie: admin.cookie })).status).toBe(204);
-    expect((await request(path, { method: "PUT", cookie: admin.cookie })).status).toBe(204);
-    expect(await rolesOf(admin.cookie, id)).toEqual(["executor", "viewer"]);
+    expect((await setRole(admin.cookie, id, "approver")).status).toBe(204);
+    expect((await setRole(admin.cookie, id, "approver")).status).toBe(204);
+    expect(await roleOf(admin.cookie, id)).toBe("approver");
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
+    expect(rows).toEqual([expect.objectContaining({ role: "approver", updatedBy: admin.id })]);
 
-    expect((await request(path, { method: "DELETE", cookie: admin.cookie })).status).toBe(204);
-    expect((await request(path, { method: "DELETE", cookie: admin.cookie })).status).toBe(204);
-    expect(await rolesOf(admin.cookie, id)).toEqual(["viewer"]);
-
-    expect(logs.map((l) => [l.event, l.actorId, l.target, l.role])).toEqual([
-      ["user.role_granted", admin.id, { type: "user", id }, "executor"],
-      ["user.role_revoked", admin.id, { type: "user", id }, "executor"],
+    expect(logs.map((l) => [l.event, l.actorId, l.target, l.from, l.to])).toEqual([
+      ["user.role_changed", admin.id, { type: "user", id }, "worker", "approver"],
     ]);
   });
 
-  it("付与したロールはすぐに効く（D-35）", async () => {
+  it("行のないユーザーを閲覧者にすると行ができ、実効のロールは変わらないのでログは出さない", async () => {
+    const admin = await adminSession();
+    const id = await createUser({ username: "user01", role: null });
+    const logs = captureOperationLogs();
+
+    expect((await setRole(admin.cookie, id, "viewer")).status).toBe(204);
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
+    expect(rows).toEqual([expect.objectContaining({ role: "viewer", updatedBy: admin.id })]);
+    expect(logs).toEqual([]);
+
+    const other = await createUser({ username: "user02", role: null });
+    expect((await setRole(admin.cookie, other, "worker")).status).toBe(204);
+    expect(logs.map((l) => [l.event, l.from, l.to])).toEqual([
+      ["user.role_changed", "viewer", "worker"],
+    ]);
+  });
+
+  it("変更したロールはすぐに効く（D-35）", async () => {
     const admin = await adminSession();
     const id = await createUser({ username: "user01" });
     const cookie = await login("user01");
     expect((await request("/api/admin/users", { cookie })).status).toBe(403);
 
-    await request(`/api/admin/users/${id}/roles/admin`, { method: "PUT", cookie: admin.cookie });
+    await setRole(admin.cookie, id, "admin");
     expect((await request("/api/admin/users", { cookie })).status).toBe(200);
   });
 
-  it("D-33: 管理者ロールの付与・剥奪で、user_roles と user.role が食い違わない", async () => {
+  it("D-33: 管理者へ・管理者からの変更で、user_roles と user.role が食い違わない", async () => {
     const admin = await adminSession();
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    const id = await createUser({ username: "user01", role: "worker" });
     const roleColumn = async () =>
       (await db.select({ role: user.role }).from(user).where(eq(user.id, id)))[0]?.role;
 
-    await request(`/api/admin/users/${id}/roles/admin`, { method: "PUT", cookie: admin.cookie });
+    await setRole(admin.cookie, id, "admin");
     expect(await roleColumn()).toBe("admin");
     expect(await adminColumnMismatches()).toEqual([]);
 
-    // 管理者以外のロールを変えても、user.role は変わらない
-    await request(`/api/admin/users/${id}/roles/viewer`, {
-      method: "DELETE",
-      cookie: admin.cookie,
-    });
-    expect(await roleColumn()).toBe("admin");
-
-    await request(`/api/admin/users/${id}/roles/admin`, { method: "DELETE", cookie: admin.cookie });
+    await setRole(admin.cookie, id, "approver");
     expect(await roleColumn()).toBe("user");
     expect(await adminColumnMismatches()).toEqual([]);
   });
 
-  it("D-38: 自分の管理者ロールは剥奪できない。自分のほかのロールと、他の管理者の管理者ロールは剥奪できる", async () => {
+  it("D-38: 自分のロールは、同じロールでも変更できない。他の管理者のロールは変更できる", async () => {
     const admin = await adminSession();
-    const other = await createUser({ username: "admin02", roles: ["admin"] });
-    await request(`/api/admin/users/${admin.id}/roles/viewer`, {
-      method: "PUT",
-      cookie: admin.cookie,
-    });
+    const other = await createUser({ username: "admin02", role: "admin" });
 
-    const self = await request(`/api/admin/users/${admin.id}/roles/admin`, {
-      method: "DELETE",
-      cookie: admin.cookie,
-    });
-    expect(self.status).toBe(403);
-    expect((await readJson(self)).code).toBe("FORBIDDEN");
-    expect(await rolesOf(admin.cookie, admin.id)).toEqual(["admin", "viewer"]);
+    for (const role of ["approver", "admin"]) {
+      const self = await setRole(admin.cookie, admin.id, role);
+      expect(self.status, role).toBe(403);
+      expect(await readJson(self)).toMatchObject({
+        code: "FORBIDDEN",
+        detail: "自分のロールは変更できません。",
+      });
+    }
+    expect(await roleOf(admin.cookie, admin.id)).toBe("admin");
 
-    const ownViewer = await request(`/api/admin/users/${admin.id}/roles/viewer`, {
-      method: "DELETE",
-      cookie: admin.cookie,
-    });
-    expect(ownViewer.status).toBe(204);
-
-    const otherAdmin = await request(`/api/admin/users/${other}/roles/admin`, {
-      method: "DELETE",
-      cookie: admin.cookie,
-    });
-    expect(otherAdmin.status).toBe(204);
-    expect(await rolesOf(admin.cookie, other)).toEqual([]);
+    expect((await setRole(admin.cookie, other, "viewer")).status).toBe(204);
+    expect(await roleOf(admin.cookie, other)).toBe("viewer");
   });
 
-  it("いないユーザーと、ないロールは NOT_FOUND", async () => {
+  it("いないユーザーは NOT_FOUND、知らないロールは VALIDATION_FAILED、古いパスは NOT_FOUND", async () => {
     const admin = await adminSession();
     const id = await createUser({ username: "user01" });
-    const unknownUser = await request(`/api/admin/users/${UNKNOWN_ID}/roles/viewer`, {
+    expect((await setRole(admin.cookie, UNKNOWN_ID, "viewer")).status).toBe(404);
+
+    const unknownRole = await setRole(admin.cookie, id, "author");
+    expect(unknownRole.status).toBe(400);
+    expect((await readJson(unknownRole)).code).toBe("VALIDATION_FAILED");
+
+    const old = await request(`/api/admin/users/${id}/roles/approver`, {
       method: "PUT",
       cookie: admin.cookie,
     });
-    expect(unknownUser.status).toBe(404);
-    const unknownRole = await request(`/api/admin/users/${id}/roles/superuser`, {
-      method: "PUT",
-      cookie: admin.cookie,
-    });
-    expect(unknownRole.status).toBe(404);
+    expect(old.status).toBe(404);
   });
 });
 
 describe("無効化", () => {
   it("F-01 AC: 無効化したユーザーはログインできず、既存のセッションも失効する", async () => {
     const admin = await adminSession();
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    const id = await createUser({ username: "user01", role: "viewer" });
     const userCookie = await login("user01");
     const logs = captureOperationLogs();
 
@@ -481,7 +492,7 @@ describe("無効化", () => {
 describe("パスワードの再設定（D-37）", () => {
   it("仮のパスワードにし、既存のセッションを失効させ、次のログインでパスワード変更を求める", async () => {
     const admin = await adminSession();
-    const id = await createUser({ username: "user01", roles: ["viewer"] });
+    const id = await createUser({ username: "user01", role: "viewer" });
     const oldCookie = await login("user01");
     const logs = captureOperationLogs();
 

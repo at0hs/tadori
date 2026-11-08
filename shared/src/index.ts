@@ -4,7 +4,15 @@ export * from "./schemas/approvals.ts";
 export * from "./schemas/executions.ts";
 export * from "./schemas/me.ts";
 export * from "./schemas/procedures.ts";
-export { ROLES, type Role, roleSchema } from "./schemas/roles.ts";
+export {
+  can,
+  PERMISSIONS,
+  type Permission,
+  ROLES,
+  type Role,
+  roleAtLeast,
+  roleSchema,
+} from "./schemas/roles.ts";
 export {
   type AdminUser,
   type AdminUserDetailResponse,
@@ -20,11 +28,12 @@ export {
   type PasswordResetRequest,
   passwordResetRequestSchema,
   passwordSchema,
+  type SetRoleRequest,
+  setRoleRequestSchema,
   temporaryPasswordSchema,
   userIdParamSchema,
   userNameSchema,
   usernameSchema,
-  userRoleParamSchema,
 } from "./schemas/users.ts";
 export { findVariableRefs, VARIABLE_NAME_RE, type VariableRef } from "./variables/parse.ts";
 export {

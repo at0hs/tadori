@@ -25,14 +25,15 @@ describe("初期管理者（D-20）", () => {
       .select()
       .from(userRoles)
       .where(eq(userRoles.userId, u?.id ?? ""));
-    expect(roles.map((r) => r.role)).toEqual(["admin"]);
+    // 1人1行（D-64）。最後にロールを設定した人は本人にする（data-model.md 4.1）
+    expect(roles).toEqual([expect.objectContaining({ role: "admin", updatedBy: u?.id })]);
   });
 
   it("初回ログインでパスワードの変更を求められる", async () => {
     await ensureInitialAdmin(CFG);
     const cookie = await login("admin", CFG.INITIAL_ADMIN_PASSWORD);
     const me = await readJson(await request("/api/me", { cookie }));
-    expect(me).toMatchObject({ username: "admin", roles: ["admin"], mustChangePassword: true });
+    expect(me).toMatchObject({ username: "admin", role: "admin", mustChangePassword: true });
   });
 
   it("本番では .env.example のダミーの初期パスワードで作らない", async () => {

@@ -7,7 +7,7 @@ const u = (name: string, username: string, o: Partial<AdminUser> = {}): AdminUse
   name,
   username,
   email: `${username}@example.test`,
-  roles: [],
+  role: "worker",
   banned: false,
   mustChangePassword: false,
   createdAt: "2026-11-07T00:00:00.000Z",

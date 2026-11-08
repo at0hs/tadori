@@ -1,5 +1,5 @@
-import type { FieldError, ProcedureContent } from "@tadori/shared";
-import { and, eq } from "drizzle-orm";
+import { can, type FieldError, type ProcedureContent } from "@tadori/shared";
+import { eq } from "drizzle-orm";
 import { user } from "../../db/schema/auth.ts";
 import { executions } from "../../db/schema/executions.ts";
 import { userRoles } from "../../db/schema/users.ts";
@@ -19,26 +19,27 @@ export async function lockExecution(tx: Tx, id: string): Promise<ExecutionRow> {
 }
 
 /**
- * 実行を操作できるのは本人だけ（D-35）。実行者ロールの確認はルートの requireRole で済んでいる。
+ * 実行を操作できるのは本人だけ（D-35）。作業者以上のロールの確認はルートの requirePermission で済んでいる。
  */
 export function assertOwner(actor: Actor, row: ExecutionRow) {
-  if (row.executorId !== actor.id || !actor.roles.includes("executor")) {
+  if (row.executorId !== actor.id || !can(actor.role, "execute")) {
     throw new AppError("FORBIDDEN", "この実行を操作できるのは実行者本人だけです。");
   }
 }
 
 /**
- * 実行者が自分の実行をもう操作できないか（無効化された、または実行者ロールがない）。
+ * 実行者が自分の実行をもう操作できないか（無効化された、またはロールが閲覧者）。
+ * ロールの行がなければ閲覧者として扱う（authorization.md 1章）。
  * そうなって初めて、管理者が中止できる（D-36）。
  */
 export async function executorBlocked(ex: Executor, executorId: string): Promise<boolean> {
-  const [row] = await ex.select({ banned: user.banned }).from(user).where(eq(user.id, executorId));
+  const [row] = await ex
+    .select({ banned: user.banned, role: userRoles.role })
+    .from(user)
+    .leftJoin(userRoles, eq(userRoles.userId, user.id))
+    .where(eq(user.id, executorId));
   if (!row || row.banned === true) return true;
-  const roles = await ex
-    .select({ role: userRoles.role })
-    .from(userRoles)
-    .where(and(eq(userRoles.userId, executorId), eq(userRoles.role, "executor")));
-  return roles.length === 0;
+  return !can(row.role ?? "viewer", "execute");
 }
 
 /**

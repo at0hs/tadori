@@ -1,9 +1,10 @@
-import type {
-  ExecutionDetailResponse,
-  ExecutionStep,
-  MeResponse,
-  StepStatus,
-  StepStatusConflict,
+import {
+  can,
+  type ExecutionDetailResponse,
+  type ExecutionStep,
+  type MeResponse,
+  type StepStatus,
+  type StepStatusConflict,
 } from "@tadori/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -62,9 +63,9 @@ import { StepCard, type StepCardEnv, stepLabel } from "./step-card.tsx";
 
 // S-12 実行（ui.md 8.4〜8.8、案2）。Excel（F-09）の操作は、それを作るときに足す。
 
-/** 本人：その実行を開始し、今も実行者ロールを持つ人（D-35） */
+/** 本人：その実行を開始し、今も作業者以上のロールを持つ人（D-35） */
 export function canOperate(detail: ExecutionDetailResponse, me: MeResponse): boolean {
-  return detail.executor.id === me.id && me.roles.includes("executor");
+  return detail.executor.id === me.id && can(me.role, "execute");
 }
 
 /** コメント・エビデンスを追加できる：本人で、実行中か差し戻し */
@@ -500,7 +501,7 @@ function ExecutionBanner({
         }
       >
         実行者の <b>{detail.executor.name}</b>{" "}
-        は無効化されているか、実行者ロールを持っていません。この実行は管理者が中止できます。
+        は無効化されているか、ロールが閲覧者です。この実行は管理者が中止できます。
       </Banner>
     );
   }

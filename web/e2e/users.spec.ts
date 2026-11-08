@@ -19,11 +19,15 @@ test("ユーザーを作ると詳細に移り、作ったユーザーは初回�
   await page.getByLabel("ユーザー名", { exact: true }).fill("sato");
   await page.getByLabel("メールアドレス", { exact: true }).fill("sato@example.test");
   await page.getByLabel("仮のパスワード", { exact: true }).fill(TEMP_PASSWORD);
-  await page.getByRole("checkbox", { name: "実行者" }).check();
+  // ロールは既定で選ばれていない。選ばずに押すと欄にエラーを出す（ui.md 5.4）
+  await page.getByRole("button", { name: "作成する" }).click();
+  await expect(page.getByText("ロールを選んでください。")).toBeVisible();
+  await expect(page).toHaveURL("/admin/users/new");
+  await page.getByRole("radio", { name: /^作業者/ }).click();
   await page.getByRole("button", { name: "作成する" }).click();
   await expect(page).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "佐藤 次郎" })).toBeVisible();
-  await expect(page.getByRole("switch", { name: "実行者" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /^作業者/ })).toBeChecked();
 
   const other = await freshPage(browser);
   await login(other, "sato", TEMP_PASSWORD);
@@ -37,6 +41,7 @@ test("送信中は「作成する」を押せない", async ({ page }) => {
   await page.getByLabel("ユーザー名", { exact: true }).fill("takahashi");
   await page.getByLabel("メールアドレス", { exact: true }).fill("takahashi@example.test");
   await page.getByLabel("仮のパスワード", { exact: true }).fill(TEMP_PASSWORD);
+  await page.getByRole("radio", { name: /^作業者/ }).click();
   // 応答を遅らせて、送信中の状態を確かめる
   await page.route("**/api/admin/users", async (route) => {
     await new Promise((r) => setTimeout(r, 500));
@@ -54,6 +59,7 @@ test("使われているユーザー名は欄にエラーを出し、入力を�
   await page.getByLabel("ユーザー名", { exact: true }).fill("sato");
   await page.getByLabel("メールアドレス", { exact: true }).fill("sato2@example.test");
   await page.getByLabel("仮のパスワード", { exact: true }).fill(TEMP_PASSWORD);
+  await page.getByRole("radio", { name: /^作業者/ }).click();
   await page.getByRole("button", { name: "作成する" }).click();
   await expect(page.getByText("このユーザー名は使われています。")).toBeVisible();
   await expect(page.getByLabel("名前", { exact: true })).toHaveValue("佐藤 二郎");
@@ -92,35 +98,54 @@ test("URL の絞り込みが外から変わったら、検索欄も合わせる"
   await expect(search).toHaveValue("");
 });
 
-test("ロールのスイッチで付与と剥奪がすぐ反映される", async ({ page }) => {
+test("ロールを選ぶとすぐ反映され、一覧にも出る（D-64）", async ({ page }) => {
   await page.goto("/admin/users");
   await page.getByRole("link", { name: /佐藤 次郎/ }).click();
-  const approver = page.getByRole("switch", { name: "承認者" });
-  await approver.click();
-  await expect(approver).toBeChecked();
+  await page.getByRole("radio", { name: /^承認者/ }).click();
+  await expect(page.getByRole("radio", { name: /^承認者/ })).toBeChecked();
   await page.reload();
-  await expect(page.getByRole("switch", { name: "承認者" })).toBeChecked();
-  await page.getByRole("switch", { name: "承認者" }).click();
-  await expect(page.getByRole("switch", { name: "承認者" })).not.toBeChecked();
-  await page.reload();
-  await expect(page.getByRole("switch", { name: "承認者" })).not.toBeChecked();
+  await expect(page.getByRole("radio", { name: /^承認者/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /^作業者/ })).not.toBeChecked();
+  await page.goto("/admin/users");
+  await expect(page.getByRole("link", { name: /佐藤 次郎/ }).getByText("承認者")).toBeVisible();
 });
 
-test("自分に作成者ロールを付けると、ヘッダのロールがすぐ変わる", async ({ page }) => {
+test("矢印キーで選んでいる途中のロールは送らず、グループから出たときに最後の1つだけを送る", async ({
+  page,
+}) => {
   await page.goto("/admin/users");
-  await page.getByRole("link", { name: /管理 花子/ }).click();
-  await page.getByRole("switch", { name: "作成者" }).click();
-  await expect(page.getByRole("switch", { name: "作成者" })).toBeChecked();
-  await openUserMenu(page);
-  await expect(page.getByRole("menu").getByText("管理者・作成者")).toBeVisible();
+  await page.getByRole("link", { name: /佐藤 次郎/ }).click();
+  const sent: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" && req.url().endsWith("/role")) sent.push(req.postData() ?? "");
+  });
+  // 承認者 → 作業者 → 閲覧者 と矢印キーで動かす
+  await page.getByRole("radio", { name: /^承認者/ }).focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeFocused();
+  expect(sent).toEqual([]);
+
+  await page.keyboard.press("Tab");
+  await expect.poll(() => sent).toEqual([JSON.stringify({ role: "viewer" })]);
+  await page.reload();
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeChecked();
 });
 
-test("自分の詳細では管理者ロールを外せず、⋯ を出さない", async ({ page }) => {
+test("自分の詳細ではロールを選べず、⋯ を出さない。ヘッダには自分のロールを出す（D-38）", async ({
+  page,
+}) => {
   await page.goto("/admin/users");
   await page.getByRole("link", { name: /管理 花子/ }).click();
-  await expect(page.getByRole("switch", { name: "管理者" })).toBeDisabled();
-  await expect(page.getByText("自分の管理者ロールは外せません")).toBeVisible();
+  for (const name of [/^管理者/, /^承認者/, /^作業者/, /^閲覧者/]) {
+    await expect(page.getByRole("radio", { name })).toBeDisabled();
+  }
+  await expect(page.getByRole("radio", { name: /^管理者/ })).toBeChecked();
+  await expect(page.getByText("自分のロールは変更できません")).toBeVisible();
   await expect(page.getByRole("button", { name: "その他の操作" })).toHaveCount(0);
+  await openUserMenu(page);
+  await expect(page.getByRole("menu").getByText("管理者", { exact: true })).toBeVisible();
 });
 
 test("パスワードを再設定すると、そのユーザーは次のログインで変更を求められる", async ({
@@ -159,13 +184,16 @@ test("無効化すると、そのユーザーはログインできない", async
   await other.context().close();
 });
 
-test("管理者でない人は管理の画面を開けず、メニューにも出ない", async ({ page, browser }) => {
+test("管理者でない人（承認者でも）は管理の画面を開けず、メニューにも出ない", async ({
+  page,
+  browser,
+}) => {
   await page.goto("/admin/users/new");
   await page.getByLabel("名前", { exact: true }).fill("田中 五郎");
   await page.getByLabel("ユーザー名", { exact: true }).fill("tanaka");
   await page.getByLabel("メールアドレス", { exact: true }).fill("tanaka@example.test");
   await page.getByLabel("仮のパスワード", { exact: true }).fill(TEMP_PASSWORD);
-  await page.getByRole("checkbox", { name: "実行者" }).check();
+  await page.getByRole("radio", { name: /^承認者/ }).click();
   await page.getByRole("button", { name: "作成する" }).click();
   await expect(page).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}$/);
 

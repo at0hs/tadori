@@ -1,5 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
-import { ADMIN_STATE, AUTHOR_STATES, pageAs, setupAuthor } from "./helpers.ts";
+import { type Browser, expect, type Page, test } from "@playwright/test";
+import { ADMIN_STATE, AUTHOR_STATES, BASE_URL, pageAs, setupAuthor } from "./helpers.ts";
 
 // F-02・F-03（S-04〜S-09）。上から順に状態を積む。
 test.describe.configure({ mode: "serial" });
@@ -326,26 +326,108 @@ test("D-07: アーカイブすると「編集」が出なくなり、編集画�
   await expect(author.getByText("アーカイブした手順書は編集できません。")).toBeVisible();
 });
 
-test("D-34: 作成者ロールのない人には「未公開」のカードを出さず、未公開での絞り込みは「すべて」にする", async ({
+/**
+ * author2 のロールを管理者の API で一時的に変えて fn を流し、承認者に戻す。
+ * 1つのファイルで新しいユーザーを作るのは2人までなので、ロールの違う人を作らずに済ませる。
+ */
+async function asAuthor2With(
+  browser: Browser,
+  role: "worker" | "viewer",
+  fn: (page: Page) => Promise<void>,
+) {
+  const admin = await pageAs(browser, ADMIN_STATE);
+  const other = await pageAs(browser, AUTHOR_STATES[1]);
+  const id = (await (await other.request.get("/api/me")).json()).id;
+  const setRole = (r: string) =>
+    admin.request.put(`/api/admin/users/${id}/role`, {
+      headers: { origin: BASE_URL },
+      data: { role: r },
+    });
+  expect((await setRole(role)).ok()).toBe(true);
+  try {
+    await fn(other);
+  } finally {
+    expect((await setRole("approver")).ok()).toBe(true);
+    await other.context().close();
+    await admin.context().close();
+  }
+}
+
+test("D-34: 閲覧者には「未公開」のカードを出さず、未公開での絞り込みは「すべて」にする", async ({
   browser,
 }) => {
   const card = (page: Page, label: string) =>
     page.getByRole("button", { name: new RegExp(`^${label}`) });
 
-  // 作成者には4枚
+  // 承認者には4枚
   await author.goto("/procedures");
   await expect(card(author, "未公開")).toBeVisible();
 
-  // 管理者ロールだけの人には3枚
-  const admin = await pageAs(browser, ADMIN_STATE);
-  await admin.goto("/procedures");
-  await expect(card(admin, "すべて（アーカイブを除く）")).toBeVisible();
-  await expect(card(admin, "編集中")).toBeVisible();
-  await expect(card(admin, "アーカイブ")).toBeVisible();
-  await expect(card(admin, "未公開")).toHaveCount(0);
+  await asAuthor2With(browser, "viewer", async (viewer) => {
+    await viewer.goto("/procedures");
+    await expect(card(viewer, "すべて（アーカイブを除く）")).toBeVisible();
+    await expect(card(viewer, "編集中")).toBeVisible();
+    await expect(card(viewer, "アーカイブ")).toBeVisible();
+    await expect(card(viewer, "未公開")).toHaveCount(0);
+    await expect(viewer.getByRole("link", { name: "手順書を作成" })).toHaveCount(0);
 
-  await admin.goto("/procedures?status=unpublished");
-  await expect(card(admin, "すべて（アーカイブを除く）")).toHaveAttribute("aria-pressed", "true");
-  await expect(admin.getByText("証明書の更新")).toBeVisible();
-  await admin.context().close();
+    await viewer.goto("/procedures?status=unpublished");
+    await expect(card(viewer, "すべて（アーカイブを除く）")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(viewer.getByText("証明書の更新")).toBeVisible();
+  });
+});
+
+test("D-65: 作業者には「公開する」を出さず案内を出し、保存はでき、アーカイブも出さない", async ({
+  browser,
+}) => {
+  // 公開済みの手順書を API で用意する（承認者の author1 が公開する）
+  const headers = { origin: BASE_URL };
+  const content = {
+    title: "作業者の確認用",
+    summary: "",
+    tags: [],
+    prerequisites: "",
+    variables: [],
+    steps: [
+      {
+        id: "01970000-0000-7000-8000-0000000003a1",
+        title: "確かめる",
+        description: "",
+        command: "",
+        verification: "",
+        evidenceRequired: false,
+      },
+    ],
+    rollbackSteps: [],
+  };
+  const created = await author.request.post("/api/procedures", { headers, data: { content } });
+  expect(created.status()).toBe(201);
+  const id = (await created.json()).id;
+  const published = await author.request.post(`/api/procedures/${id}/publish`, {
+    headers,
+    data: { content, lock: { revision: 1 }, changeReason: "最初の版" },
+  });
+  expect(published.ok()).toBe(true);
+
+  await asAuthor2With(browser, "worker", async (worker) => {
+    await worker.goto(`/procedures/${id}`);
+    await worker.getByRole("button", { name: "その他の操作" }).click();
+    await expect(worker.getByRole("menuitem", { name: "版の一覧" })).toBeVisible();
+    await expect(worker.getByRole("menuitem", { name: "アーカイブ" })).toHaveCount(0);
+    await worker.keyboard.press("Escape");
+
+    await worker.getByRole("link", { name: "編集" }).click();
+    await expect(worker).toHaveURL(`/procedures/${id}/edit`);
+    await expect(
+      worker.getByText("公開は承認者が行います。保存した下書きは、承認者のホームに出ます"),
+    ).toBeVisible();
+    await expect(worker.getByRole("button", { name: "公開する" })).toHaveCount(0);
+    await worker.getByLabel("概要", { exact: true }).fill("作業者が直した");
+    await worker.getByRole("button", { name: "保存" }).click();
+    await expect(worker.getByText("保存していない変更があります")).toHaveCount(0);
+    await expect(worker.getByText(/最終保存/)).toBeVisible();
+  });
 });

@@ -1,4 +1,4 @@
-import type { ProcedureDetailResponse } from "@tadori/shared";
+import { can, type ProcedureDetailResponse } from "@tadori/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
 import {
@@ -129,14 +129,15 @@ export function ProcedureDetail({
   if (isApiError(error, "NOT_FOUND")) return <ProcedureNotFound />;
   if (error) return <ErrorBanner error={error} />;
   if (isPending) return <DocumentSkeleton />;
-  // 未公開の手順書は作成者だけが開ける。編集画面へ移す（screens.md S-05）
+  // 未公開の手順書は作業者以上だけが開ける。編集画面へ移す（screens.md S-05）
   if (data.status === "unpublished" || !data.latestVersion) {
     return <Navigate to="/procedures/$procedureId/edit" params={{ procedureId }} replace />;
   }
 
   const version = data.latestVersion;
-  const isAuthor = me.roles.includes("author");
-  const isExecutor = me.roles.includes("executor");
+  const canEdit = can(me.role, "editProcedure");
+  const canStart = can(me.role, "execute");
+  const canArchive = can(me.role, "archiveProcedure");
   const archived = data.status === "archived";
 
   return (
@@ -155,7 +156,7 @@ export function ProcedureDetail({
           }
         />
         <div className="flex items-center gap-2">
-          {isExecutor && !archived && (
+          {canStart && !archived && (
             <Link
               to="/procedures/$procedureId/start"
               params={{ procedureId }}
@@ -165,7 +166,7 @@ export function ProcedureDetail({
               実行を開始
             </Link>
           )}
-          {isAuthor && !archived && (
+          {canEdit && !archived && (
             <Link
               to="/procedures/$procedureId/edit"
               params={{ procedureId }}
@@ -194,7 +195,7 @@ export function ProcedureDetail({
                 <ListChecks aria-hidden />
                 この手順書の実行
               </DropdownMenuItem>
-              {isAuthor && !archived && (
+              {canArchive && !archived && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => setArchiveOpen(true)}>
@@ -240,7 +241,7 @@ export function ProcedureDetail({
   );
 }
 
-/** 編集中の帯。下書きの保存者と日時は作成者にだけ届く（API が返さない、D-49）。 */
+/** 編集中の帯。下書きの保存者と日時は作業者以上にだけ届く（API が返さない、D-49）。 */
 function EditingNotice({ draft }: { draft: ProcedureDetailResponse["draft"] }) {
   return (
     <Notice tone="warning">

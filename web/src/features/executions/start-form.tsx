@@ -1,4 +1,4 @@
-import { type ProcedureDetailResponse, SECRET_MIN_LENGTH } from "@tadori/shared";
+import { can, type ProcedureDetailResponse, SECRET_MIN_LENGTH } from "@tadori/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import {
@@ -42,7 +42,7 @@ type FormValues = { values: Record<string, string> };
 
 export function StartExecutionPage({ procedureId }: { procedureId: string }) {
   const me = useMe();
-  const isExecutor = me.roles.includes("executor");
+  const isExecutor = can(me.role, "execute");
   const queryClient = useQueryClient();
   const { data, error, isPending } = useQuery({
     ...procedureQueryOptions(procedureId),
@@ -57,7 +57,7 @@ export function StartExecutionPage({ procedureId }: { procedureId: string }) {
         <EmptyState
           icon={ShieldOff}
           title="このページを開く権限がありません"
-          description="実行者ロールが必要です"
+          description="作業者以上のロールが必要です"
         />
       </div>
     );

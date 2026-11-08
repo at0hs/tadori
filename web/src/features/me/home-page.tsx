@@ -1,4 +1,10 @@
-import type { HomeDraft, HomeExecution, MeHomeResponse, Role } from "@tadori/shared";
+import {
+  can,
+  type HomeDraft,
+  type HomeExecution,
+  type MeHomeResponse,
+  type Permission,
+} from "@tadori/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import {
@@ -44,7 +50,8 @@ type SectionMeta = {
   tone: string;
   empty: string;
   emptyIcon: LucideIcon;
-  role: Role;
+  /** この区画を見られる操作の権限（D-40、D-64） */
+  permission: Permission;
 };
 
 const SECTIONS: Record<HomeSectionKey, SectionMeta> = {
@@ -55,7 +62,7 @@ const SECTIONS: Record<HomeSectionKey, SectionMeta> = {
     tone: "text-primary",
     empty: "続きの作業はありません",
     emptyIcon: Coffee,
-    role: "executor",
+    permission: "execute",
   },
   pendingApprovals: {
     title: "承認待ち",
@@ -64,7 +71,7 @@ const SECTIONS: Record<HomeSectionKey, SectionMeta> = {
     tone: "text-warning",
     empty: "承認待ちの実行はありません",
     emptyIcon: BadgeCheck,
-    role: "approver",
+    permission: "approve",
   },
   drafts: {
     title: "編集中の手順書",
@@ -73,7 +80,7 @@ const SECTIONS: Record<HomeSectionKey, SectionMeta> = {
     tone: "text-warning",
     empty: "編集中の手順書はありません",
     emptyIcon: BookOpen,
-    role: "author",
+    permission: "editProcedure",
   },
 };
 
@@ -94,7 +101,9 @@ export function HomePage() {
   };
 
   // 読み込み中は、ロールから区画の数を決めて骨組みを出す
-  const keys = data ? homeSections(data) : ORDER.filter((k) => me.roles.includes(SECTIONS[k].role));
+  const keys = data
+    ? homeSections(data)
+    : ORDER.filter((k) => can(me.role, SECTIONS[k].permission));
 
   return (
     <>

@@ -8,8 +8,8 @@ const UNKNOWN_ID = "01970000-0000-7000-8000-000000000000";
 
 /** 作成者と閲覧者を作ってログインする。 */
 async function people() {
-  const authorId = await createUser({ username: "author01", roles: ["author"] });
-  await createUser({ username: "viewer01", roles: ["viewer"] });
+  const authorId = await createUser({ username: "author01", role: "worker" });
+  await createUser({ username: "viewer01", role: "viewer" });
   return { authorId, author: await login("author01"), viewer: await login("viewer01") };
 }
 
@@ -52,7 +52,7 @@ describe("GET /api/procedures", () => {
     expect(byId.get(archived)?.status).toBe("archived");
   });
 
-  it("D-34: 作成者ロールのない人には、未公開の手順書は一覧に出ない", async () => {
+  it("D-34: 閲覧者には、未公開の手順書は一覧に出ない", async () => {
     const { authorId, author, viewer } = await people();
     const draftOnly = await insertProcedure({
       createdBy: authorId,
@@ -110,7 +110,7 @@ describe("GET /api/procedures/{id}", () => {
     expect(body.latestVersion.publishedBy).toEqual({ id: authorId, name: "author01 さん" });
   });
 
-  it("D-49: 下書きの最終更新者・日時は作成者にだけ返す", async () => {
+  it("D-49: 下書きの最終更新者・日時は作業者以上にだけ返す", async () => {
     const { authorId, author, viewer } = await people();
     const id = await insertProcedure({
       createdBy: authorId,
@@ -129,7 +129,7 @@ describe("GET /api/procedures/{id}", () => {
     expect(forAuthor.latestVersion.content.title).toBe("公開中");
   });
 
-  it("D-34: 未公開の手順書は、作成者には版のない応答、それ以外には NOT_FOUND", async () => {
+  it("D-34: 未公開の手順書は、作業者以上には版のない応答、それ以外には NOT_FOUND", async () => {
     const { authorId, author, viewer } = await people();
     const id = await insertProcedure({ createdBy: authorId, draft: sampleContent() });
 
@@ -195,7 +195,7 @@ describe("版", () => {
 });
 
 describe("GET /api/procedures/{id}/draft", () => {
-  it("D-34: 作成者ロールが必要", async () => {
+  it("D-34: 作業者以上のロールが必要", async () => {
     const { authorId, viewer } = await people();
     const id = await insertProcedure({
       createdBy: authorId,
