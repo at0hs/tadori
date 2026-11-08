@@ -58,7 +58,7 @@ export async function setupAuthor(admin: Page, browser: Browser, index: 0 | 1) {
       username,
       email: `${username}@example.test`,
       password: AUTHOR_TEMP_PASSWORD,
-      roles: ["author", "executor"],
+      role: "approver",
     },
   });
   expect(res.status()).toBe(201);

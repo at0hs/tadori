@@ -36,7 +36,7 @@ test.beforeAll(async ({ browser }) => {
       username: "runner1",
       email: "runner1@example.test",
       password: RUNNER_TEMP_PASSWORD,
-      roles: ["author", "executor"],
+      role: "worker",
     },
   });
   expect(res.status()).toBe(201);
@@ -80,11 +80,12 @@ test.beforeAll(async ({ browser }) => {
     },
   });
   procedureId = (await created.json()).id;
-  await runner.goto(`/procedures/${procedureId}/edit`);
-  await runner.getByRole("button", { name: "公開する" }).click();
-  await runner.getByLabel("変更理由").fill("最初の版");
-  await runner.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
-  await expect(runner).toHaveURL(`/procedures/${procedureId}`);
+  // 公開は承認者以上なので、作業者が作った下書きを管理者が公開する（D-65）
+  await admin.goto(`/procedures/${procedureId}/edit`);
+  await admin.getByRole("button", { name: "公開する" }).click();
+  await admin.getByLabel("変更理由").fill("最初の版");
+  await admin.getByRole("alertdialog").getByRole("button", { name: "公開する" }).click();
+  await expect(admin).toHaveURL(`/procedures/${procedureId}`);
 });
 
 test.afterAll(async () => {
@@ -218,16 +219,23 @@ test("S-11: 実行の一覧で、実行中・承認待ちを絞り込める", as
   await expect(runner.getByRole("heading", { name: "この手順書の実行" })).toBeVisible();
 });
 
-test("D-36: 実行者ロールを剥奪された実行を、管理者が理由を入れて中止できる", async () => {
+test("D-36: 閲覧者に下げた実行者の実行を、管理者が理由を入れて中止できる", async () => {
   const url = await start(runner);
   await admin.goto(`/admin/users/${runnerId}`);
   const running = admin.getByRole("region", { name: "実行中の実行" });
   await expect(running).toBeVisible();
-  // 実行者ロールを外すときは、実行中の実行の件数を案内する
-  await admin.getByRole("switch", { name: "実行者" }).click();
-  await expect(admin.getByRole("alertdialog")).toContainText("実行中の実行が");
-  await admin.getByRole("button", { name: "実行者ロールを外す" }).click();
-  await expect(admin.getByRole("switch", { name: "実行者" })).not.toBeChecked();
+  // 閲覧者に下げるときは、実行中の実行の件数を案内する。キャンセルすれば作業者のまま
+  const viewer = admin.getByRole("radio", { name: /^閲覧者/ });
+  await viewer.click();
+  const confirm = admin.getByRole("alertdialog");
+  await expect(confirm).toContainText("を閲覧者にしますか？");
+  await expect(confirm).toContainText("実行中の実行が");
+  await confirm.getByRole("button", { name: "キャンセル" }).click();
+  await expect(admin.getByRole("radio", { name: /^作業者/ })).toBeChecked();
+
+  await viewer.click();
+  await admin.getByRole("button", { name: "閲覧者にする" }).click();
+  await expect(viewer).toBeChecked();
 
   await admin.goto(url);
   await admin.getByRole("button", { name: "中止する" }).click();
