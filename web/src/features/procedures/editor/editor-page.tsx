@@ -38,11 +38,16 @@ export function EditProcedurePage({ procedureId }: { procedureId: string }) {
   // 知らせは1回だけ出す。開いたときの値を取っておき、再読み込みでまた出ないようブラウザの履歴の状態からは消す
   // （消すとルーターの状態からも消えることがあるので、表示には取っておいた値を使う）
   const [notice] = useState(fromHistory);
+  // S-17 の「公開する」で公開時の検証に通らなかったときは、開いてすぐにエラーの場所を示す（同じく1回だけ）
+  const checkFromHistory = useRouterState({
+    select: (s) => s.location.state.editorPublishCheck,
+  });
+  const [publishCheck] = useState(checkFromHistory === true);
   useEffect(() => {
-    if (!notice) return;
-    const { editorNotice: _, ...rest } = window.history.state ?? {};
+    if (!notice && !publishCheck) return;
+    const { editorNotice: _, editorPublishCheck: __, ...rest } = window.history.state ?? {};
     window.history.replaceState(rest, "");
-  }, [notice]);
+  }, [notice, publishCheck]);
   const { data, error, isPending } = useQuery({
     ...draftQueryOptions(procedureId),
     enabled: canEdit,
@@ -62,5 +67,13 @@ export function EditProcedurePage({ procedureId }: { procedureId: string }) {
   }
   if (error) return <ErrorBanner error={error} />;
   if (isPending) return <DocumentSkeleton />;
-  return <ProcedureEditor mode="edit" procedureId={procedureId} initial={data} notice={notice} />;
+  return (
+    <ProcedureEditor
+      mode="edit"
+      procedureId={procedureId}
+      initial={data}
+      notice={notice}
+      publishCheck={publishCheck}
+    />
+  );
 }

@@ -6,6 +6,7 @@ import {
   CircleAlert,
   Ellipsis,
   FileX,
+  GitCompare,
   History,
   ListChecks,
   Pencil,
@@ -220,7 +221,7 @@ export function ProcedureDetail({
           アーカイブした手順書です。新しい実行は始められません。
         </Notice>
       )}
-      {data.status === "editing" && <EditingNotice draft={data.draft} />}
+      {data.status === "editing" && <EditingNotice procedureId={procedureId} draft={data.draft} />}
 
       <div className="mt-6 grid items-start gap-4 lg:grid-cols-[1fr_18rem]">
         <ProcedureDocument content={version.content} />
@@ -242,16 +243,33 @@ export function ProcedureDetail({
 }
 
 /** 編集中の帯。下書きの保存者と日時は作業者以上にだけ届く（API が返さない、D-49）。 */
-function EditingNotice({ draft }: { draft: ProcedureDetailResponse["draft"] }) {
+function EditingNotice({
+  procedureId,
+  draft,
+}: {
+  procedureId: string;
+  draft: ProcedureDetailResponse["draft"];
+}) {
   return (
     <Notice tone="warning">
       <Pencil className="size-4 shrink-0 text-warning" aria-hidden />
       {draft ? (
-        <span>
-          編集中です。下書きは <b>{draft.updatedBy.name}</b> が{" "}
-          {formatShortDateTime(draft.updatedAt)}{" "}
-          に保存しました。この画面には公開済みの版を出しています。
-        </span>
+        <>
+          <span>
+            編集中です。下書きは <b>{draft.updatedBy.name}</b> が{" "}
+            {formatShortDateTime(draft.updatedAt)}{" "}
+            に保存しました。この画面には公開済みの版を出しています。
+          </span>
+          {/* 下書きの中身を見られるのは作業者以上（draft が届く人）だけ（F-11） */}
+          <Link
+            to="/procedures/$procedureId/draft/diff"
+            params={{ procedureId }}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto" })}
+          >
+            <GitCompare aria-hidden />
+            変更点を見る
+          </Link>
+        </>
       ) : (
         <span>編集中です。この画面には公開済みの版を出しています。</span>
       )}
