@@ -318,6 +318,8 @@ export function ProcedureEditor({
   }
 
   const title = mode === "new" ? "手順書を作成" : "手順書を編集";
+  // パンくずは保存済み（読み込み直し・保存のたびに reset した内容）の題名。打ちかけの題名は出さない
+  const savedTitle = form.formState.defaultValues?.title;
   const nextVersionNo = (meta.baseVersionNo ?? 0) + 1;
   const canDiscard = mode === "edit" && lock !== null && lock.revision !== null;
   const cancelTo =
@@ -327,14 +329,29 @@ export function ProcedureEditor({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSave} noValidate>
+      <form
+        onSubmit={onSave}
+        // 入力欄の Enter による暗黙の送信で、文書全体を保存しない。保存は「保存」ボタンで行う。
+        // ダイアログ（ポータル）からの Enter はこのフォームの外なので止めない。
+        onKeyDown={(e) => {
+          if (
+            e.key === "Enter" &&
+            !e.nativeEvent.isComposing &&
+            e.target instanceof HTMLInputElement &&
+            e.currentTarget.contains(e.target)
+          ) {
+            e.preventDefault();
+          }
+        }}
+        noValidate
+      >
         <div className="sticky top-0 z-20 -mx-6 border-b bg-background/90 px-6 pt-1 pb-3 backdrop-blur">
           <Breadcrumbs
             items={[
               PROCEDURES_CRUMB,
               ...(mode === "new"
                 ? [{ label: "新規作成" }]
-                : [{ label: initial?.content.title || "（タイトルなし）" }, { label: "編集" }]),
+                : [{ label: savedTitle || "（タイトルなし）" }, { label: "編集" }]),
             ]}
           />
           <div className="flex flex-wrap items-center gap-3">
