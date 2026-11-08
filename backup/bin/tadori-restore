@@ -33,6 +33,13 @@ acquire_lock
 
 work_db="${PGDATABASE}_restore"
 sql() { PGOPTIONS='-c client_min_messages=warning' psql -X -q -At -d postgres -v ON_ERROR_STOP=1 "$@"; }
+db_exists() { [[ -n "$(sql -c "SELECT 1 FROM pg_database WHERE datname = '$1'")" ]]; }
+# 前の復元が、今の DB を消した直後・名前を変える前に止められた場合は、戻した DB だけが残っている。
+# それを下で消さないよう、名前を変えてから続ける。
+if ! db_exists "$PGDATABASE" && db_exists "$work_db"; then
+  sql -c "ALTER DATABASE \"$work_db\" RENAME TO \"$PGDATABASE\""
+  log "前の復元で戻した DB（$work_db）が残っていたので、$PGDATABASE に名前を変えた"
+fi
 # DB へのクライアントの接続の数。autovacuum などは数えない（DROP DATABASE が自分で止める）。
 count_clients() {
   sql -c "SELECT count(*) FROM pg_stat_activity
@@ -84,7 +91,7 @@ abort_swap() {
   sql -c "ALTER DATABASE \"$PGDATABASE\" ALLOW_CONNECTIONS true" || true
   sql -c "DROP DATABASE IF EXISTS \"$work_db\"" || true
 }
-if [[ -n "$(sql -c "SELECT 1 FROM pg_database WHERE datname = '$PGDATABASE'")" ]]; then
+if db_exists "$PGDATABASE"; then
   trap abort_swap EXIT
   sql -c "ALTER DATABASE \"$PGDATABASE\" ALLOW_CONNECTIONS false"
   others=$(count_clients "$PGDATABASE")
