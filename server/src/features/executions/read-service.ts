@@ -19,7 +19,7 @@ import {
 import { procedureVersions } from "../../db/schema/procedures.ts";
 import { AppError } from "../../lib/errors.ts";
 import type { Actor } from "../../lib/hono.ts";
-import { userNames } from "../procedures/queries.ts";
+import { type Executor, titleOf, userNames } from "../procedures/queries.ts";
 import { executorBlocked } from "./queries.ts";
 
 // 実行の読み込み（api.md 4.4・5.1）。実行は全員が見られる（authorization.md 3.3）。
@@ -28,9 +28,23 @@ import { executorBlocked } from "./queries.ts";
 
 const iso = (d: Date) => d.toISOString();
 
-/** 実行の詳細（S-12）。canAdminCancel は管理者にだけ項目ごと返す（D-48）。 */
-export async function getExecution(actor: Actor, id: string): Promise<ExecutionDetailResponse> {
-  const [row] = await db
+/**
+ * 実行の詳細（S-12）。canAdminCancel は管理者にだけ項目ごと返す（D-48）。
+ * 何度かに分けて読むので、途中で記録が書き込まれても食い違わないよう、1つのスナップショットで読む。
+ */
+export function getExecution(actor: Actor, id: string): Promise<ExecutionDetailResponse> {
+  return db.transaction((tx) => readExecution(tx, actor, id), {
+    isolationLevel: "repeatable read",
+    accessMode: "read only",
+  });
+}
+
+async function readExecution(
+  ex: Executor,
+  actor: Actor,
+  id: string,
+): Promise<ExecutionDetailResponse> {
+  const [row] = await ex
     .select({ e: executions, v: procedureVersions })
     .from(executions)
     .innerJoin(procedureVersions, eq(procedureVersions.id, executions.versionId))
@@ -39,31 +53,31 @@ export async function getExecution(actor: Actor, id: string): Promise<ExecutionD
   const { e, v } = row;
 
   const [variables, steps, events, comments, evidences, approvals] = await Promise.all([
-    db.select().from(executionVariables).where(eq(executionVariables.executionId, id)),
-    db.select().from(executionSteps).where(eq(executionSteps.executionId, id)),
-    db
+    ex.select().from(executionVariables).where(eq(executionVariables.executionId, id)),
+    ex.select().from(executionSteps).where(eq(executionSteps.executionId, id)),
+    ex
       .select()
       .from(stepStatusEvents)
       .where(eq(stepStatusEvents.executionId, id))
       .orderBy(asc(stepStatusEvents.changedAt), asc(stepStatusEvents.id)),
-    db
+    ex
       .select()
       .from(stepComments)
       .where(eq(stepComments.executionId, id))
       .orderBy(asc(stepComments.createdAt), asc(stepComments.id)),
-    db
+    ex
       .select()
       .from(stepEvidences)
       .where(eq(stepEvidences.executionId, id))
       .orderBy(asc(stepEvidences.createdAt), asc(stepEvidences.id)),
-    db
+    ex
       .select()
       .from(approvalEvents)
       .where(eq(approvalEvents.executionId, id))
       .orderBy(asc(approvalEvents.occurredAt), asc(approvalEvents.id)),
   ]);
 
-  const name = await userNames(db, [
+  const name = await userNames(ex, [
     e.executorId,
     ...(e.cancelledBy ? [e.cancelledBy] : []),
     ...steps.flatMap((s) => (s.updatedBy ? [s.updatedBy] : [])),
@@ -134,7 +148,7 @@ export async function getExecution(actor: Actor, id: string): Promise<ExecutionD
     })),
   };
   if (actor.roles.includes("admin")) {
-    body.canAdminCancel = e.status === "running" && (await executorBlocked(db, e.executorId));
+    body.canAdminCancel = e.status === "running" && (await executorBlocked(ex, e.executorId));
   }
   return body;
 }
@@ -169,7 +183,7 @@ export async function summarizeExecutions(where?: SQL): Promise<HomeExecution[]>
     .select({
       e: executions,
       versionNo: procedureVersions.versionNo,
-      content: procedureVersions.content,
+      title: titleOf(procedureVersions.content),
       done: progress.done,
       total: progress.total,
     })
@@ -181,9 +195,9 @@ export async function summarizeExecutions(where?: SQL): Promise<HomeExecution[]>
     db,
     rows.map((r) => r.e.executorId),
   );
-  return rows.map(({ e, versionNo, content, done, total }) => ({
+  return rows.map(({ e, versionNo, title, done, total }) => ({
     id: e.id,
-    procedure: { id: e.procedureId, title: content.title },
+    procedure: { id: e.procedureId, title },
     versionNo,
     executor: name(e.executorId),
     status: e.status,
@@ -201,15 +215,15 @@ export async function runningExecutionsOf(userId: string): Promise<RunningExecut
     .select({
       e: executions,
       versionNo: procedureVersions.versionNo,
-      content: procedureVersions.content,
+      title: titleOf(procedureVersions.content),
     })
     .from(executions)
     .innerJoin(procedureVersions, eq(procedureVersions.id, executions.versionId))
     .where(and(eq(executions.executorId, userId), eq(executions.status, "running")))
     .orderBy(desc(executions.startedAt), desc(executions.id));
-  return rows.map(({ e, versionNo, content }) => ({
+  return rows.map(({ e, versionNo, title }) => ({
     id: e.id,
-    procedure: { id: e.procedureId, title: content.title },
+    procedure: { id: e.procedureId, title },
     versionNo,
     startedAt: iso(e.startedAt),
     updatedAt: iso(e.updatedAt),

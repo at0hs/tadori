@@ -1,5 +1,6 @@
 import type { ProcedureStatus, UserRef } from "@tadori/shared";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { db } from "../../db/client.ts";
 import { user } from "../../db/schema/auth.ts";
 import { procedureDrafts, procedures, procedureVersions } from "../../db/schema/procedures.ts";
@@ -12,6 +13,9 @@ export type Executor = typeof db | Tx;
 export type ProcedureRow = typeof procedures.$inferSelect;
 export type VersionRow = typeof procedureVersions.$inferSelect;
 export type DraftRow = typeof procedureDrafts.$inferSelect;
+
+/** 版・下書きの文書（jsonb）から題名だけを読む。一覧で文書全体を読まないため。 */
+export const titleOf = (content: AnyPgColumn) => sql<string>`${content}->>'title'`;
 
 /** 手順書の状態（state-transitions.md 2.1）。 */
 export function statusOf(row: ProcedureRow, hasDraft: boolean): ProcedureStatus {

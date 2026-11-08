@@ -5,7 +5,7 @@ import { executions } from "../../db/schema/executions.ts";
 import { procedureDrafts, procedures } from "../../db/schema/procedures.ts";
 import type { Actor } from "../../lib/hono.ts";
 import { summarizeExecutions } from "../executions/read-service.ts";
-import { userNames } from "../procedures/queries.ts";
+import { titleOf, userNames } from "../procedures/queries.ts";
 
 // ホーム（S-03、api.md 4.2）。持っているロールの区画だけを返す（D-40）。
 // 区画ごとに全件を返し、出す件数は画面で決める（件数が少ないため、D-16）。
@@ -38,22 +38,27 @@ async function pendingApprovals(userId: string): Promise<HomeExecution[]> {
 /** 下書きのある手順書（未公開を含む）。最終更新の新しい順。 */
 async function drafts(): Promise<HomeDraft[]> {
   const rows = await db
-    .select({ p: procedures, d: procedureDrafts })
+    .select({
+      p: procedures,
+      title: titleOf(procedureDrafts.content),
+      updatedBy: procedureDrafts.updatedBy,
+      updatedAt: procedureDrafts.updatedAt,
+    })
     .from(procedureDrafts)
     .innerJoin(procedures, eq(procedures.id, procedureDrafts.procedureId))
     .where(eq(procedures.status, "active"));
   const name = await userNames(
     db,
-    rows.map((r) => r.d.updatedBy),
+    rows.map((r) => r.updatedBy),
   );
   return rows
     .map(
-      ({ p, d }): HomeDraft => ({
+      ({ p, title, updatedBy, updatedAt }): HomeDraft => ({
         id: p.id,
-        title: d.content.title,
+        title,
         status: p.latestVersionNo === null ? "unpublished" : "editing",
-        updatedBy: name(d.updatedBy),
-        updatedAt: d.updatedAt.toISOString(),
+        updatedBy: name(updatedBy),
+        updatedAt: updatedAt.toISOString(),
       }),
     )
     .sort(byTime((x) => x.updatedAt, "desc"));

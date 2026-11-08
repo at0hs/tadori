@@ -16,6 +16,7 @@ import {
   latestVersionsOf,
   type ProcedureRow,
   statusOf,
+  titleOf,
   userNames,
 } from "./queries.ts";
 
@@ -98,7 +99,13 @@ export async function listVersions(
   const row = await visibleProcedure(actor, id);
   if (row.latestVersionNo === null) throw new AppError("NOT_FOUND");
   const versions = await db
-    .select()
+    .select({
+      versionNo: procedureVersions.versionNo,
+      title: titleOf(procedureVersions.content),
+      changeReason: procedureVersions.changeReason,
+      publishedBy: procedureVersions.publishedBy,
+      publishedAt: procedureVersions.publishedAt,
+    })
     .from(procedureVersions)
     .where(eq(procedureVersions.procedureId, id))
     .orderBy(desc(procedureVersions.versionNo));
@@ -107,7 +114,7 @@ export async function listVersions(
     versions.map((v) => v.publishedBy),
   );
   return {
-    title: versions[0]?.content.title ?? "",
+    title: versions[0]?.title ?? "",
     versions: versions.map((v) => ({
       versionNo: v.versionNo,
       changeReason: v.changeReason,

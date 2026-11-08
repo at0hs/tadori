@@ -57,7 +57,8 @@ export function checkVariables(content: ProcedureContent, values: Record<string,
     }
   }
   for (const def of content.variables) {
-    if (!def.secret && !(def.name in values)) {
+    // in だと Object.prototype の名前（constructor など）が「ある」ことになる
+    if (!def.secret && !Object.hasOwn(values, def.name)) {
       errors.push({ path: `variables.${def.name}`, message: "値を入力してください。" });
     }
   }
