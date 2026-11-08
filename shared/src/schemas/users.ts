@@ -37,9 +37,7 @@ export const createUserRequestSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
   password: temporaryPasswordSchema,
-  roles: z
-    .array(roleSchema)
-    .refine((roles) => new Set(roles).size === roles.length, "同じロールが重複しています。"),
+  role: roleSchema,
 });
 export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
 
@@ -50,9 +48,12 @@ export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export const passwordResetRequestSchema = z.object({ password: temporaryPasswordSchema });
 export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
 
+/** PUT /api/admin/users/{id}/role（D-64） */
+export const setRoleRequestSchema = z.object({ role: roleSchema });
+export type SetRoleRequest = z.infer<typeof setRoleRequestSchema>;
+
 /** パスのパラメータ */
 export const userIdParamSchema = z.object({ id: z.uuid() });
-export const userRoleParamSchema = z.object({ id: z.uuid(), role: roleSchema });
 
 // 管理者の API だけが返すユーザーの情報（api.md 3章：ユーザー名・メールアドレス・ロール・有効かどうか）
 export const adminUserSchema = z.object({
@@ -60,7 +61,7 @@ export const adminUserSchema = z.object({
   name: z.string(),
   username: z.string(),
   email: z.string(),
-  roles: z.array(roleSchema),
+  role: roleSchema,
   banned: z.boolean(),
   mustChangePassword: z.boolean(),
   createdAt: z.iso.datetime(),
@@ -73,7 +74,7 @@ export type AdminUserListResponse = z.infer<typeof adminUserListResponseSchema>;
 
 /**
  * GET /api/admin/users/{id}
- * runningExecutions は、そのユーザーが実行者で実行中の実行（S-15、D-36）。無効化・ロールの剥奪の前の案内に使う。
+ * runningExecutions は、そのユーザーが実行者で実行中の実行（S-15、D-36）。無効化・閲覧者への変更の前の案内に使う。
  */
 export const adminUserDetailResponseSchema = z.object({
   user: adminUserSchema,
