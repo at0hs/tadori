@@ -93,13 +93,18 @@ export const executionRoutes = new Hono<AppEnv>()
       return c.body(null, 204);
     },
   )
-  .post("/:id/finish", requirePermission("execute"), pathParams(executionIdParamSchema), async (c) => {
-    const body: FinishExecutionResponse = await finishExecution(
-      operatorOf(c),
-      c.req.valid("param").id,
-    );
-    return c.json(body);
-  })
+  .post(
+    "/:id/finish",
+    requirePermission("execute"),
+    pathParams(executionIdParamSchema),
+    async (c) => {
+      const body: FinishExecutionResponse = await finishExecution(
+        operatorOf(c),
+        c.req.valid("param").id,
+      );
+      return c.json(body);
+    },
+  )
   .post(
     "/:id/cancel",
     requirePermission("execute"),

@@ -51,7 +51,9 @@ async function completeMain(cookie: string, id: string, main: string[]) {
   expect((await change(cookie, id, main[2] as string, "pending", "done")).status).toBe(204);
 }
 
-const revokeExecutor = (userId: string) => db.delete(userRoles).where(eq(userRoles.userId, userId));
+/** ロールを閲覧者に下げる（D-35・D-36 の「操作できなくなった」）。 */
+const toViewer = (userId: string) =>
+  db.update(userRoles).set({ role: "viewer" }).where(eq(userRoles.userId, userId));
 
 describe("終了", () => {
   it("4.1: 手順がすべて完了かスキップなら完了で終わり、承認待ちになる", async () => {
@@ -150,9 +152,9 @@ describe("中止", () => {
     expect(JSON.stringify(logs)).not.toContain("Dummy-Pass-123");
   });
 
-  it("D-35: 実行者ロールを剥奪された実行者は、自分の実行を操作できない", async () => {
+  it("D-35: 閲覧者に下げられた実行者は、自分の実行を操作できない", async () => {
     const { executorId, executor, id, main } = await setup();
-    await revokeExecutor(executorId);
+    await toViewer(executorId);
     expect((await change(executor, id, main[0] as string, "pending", "done")).status).toBe(403);
     expect((await cancel(executor, id)).status).toBe(403);
     expect((await finish(executor, id)).status).toBe(403);
@@ -164,9 +166,10 @@ describe("中止", () => {
     expect((await detail(executor, id)).status).toBe("running");
   });
 
-  it("D-36: 実行者ロールを剥奪されたら、管理者が理由を入力して中止できる", async () => {
+  it("D-36: 閲覧者に下げられたら、管理者が理由を入力して中止できる", async () => {
     const { executorId, adminId, admin, id } = await setup();
-    await revokeExecutor(executorId);
+    await toViewer(executorId);
+    expect((await detail(admin, id)).canAdminCancel).toBe(true);
 
     const empty = await cancel(admin, id, "  ");
     expect(empty.status).toBe(400);
@@ -185,6 +188,25 @@ describe("中止", () => {
       actorId: adminId,
       by: "admin",
       reason: "作業者不在のため",
+    });
+  });
+
+  it("D-36: 実行者のロールの行がなければ（閲覧者として扱う）、管理者が中止できる", async () => {
+    const { executorId, admin, id } = await setup();
+    await db.delete(userRoles).where(eq(userRoles.userId, executorId));
+    expect((await detail(admin, id)).canAdminCancel).toBe(true);
+    expect((await cancel(admin, id, "ロールの登録に失敗したため")).status).toBe(204);
+  });
+
+  it("D-64: 管理者が自分で開始した実行は、実行者として理由なしで中止できる", async () => {
+    const { admin, adminId, id } = await setup();
+    const procedureId = (await detail(admin, id)).procedure.id;
+    const own = await startRun(admin, procedureId);
+    const logs = captureOperationLogs();
+    expect((await cancel(admin, own)).status).toBe(204);
+    expect(logs.find((l) => l.event === "execution.cancelled")).toMatchObject({
+      actorId: adminId,
+      by: "executor",
     });
   });
 

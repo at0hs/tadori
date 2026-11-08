@@ -305,7 +305,9 @@ describe("ユーザーの作成（S-14）", () => {
     const body = await readJson(res);
     expect(body.code).toBe("VALIDATION_FAILED");
     const paths = body.errors.map((e: { path: string }) => e.path);
-    expect(paths).toEqual(expect.arrayContaining(["name", "username", "email", "password", "role"]));
+    expect(paths).toEqual(
+      expect.arrayContaining(["name", "username", "email", "password", "role"]),
+    );
   });
 
   it("JSON でなければ UNSUPPORTED_MEDIA_TYPE、壊れた JSON は VALIDATION_FAILED", async () => {

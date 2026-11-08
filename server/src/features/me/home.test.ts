@@ -23,16 +23,19 @@ async function setRun(id: string, values: Partial<typeof executions.$inferInsert
 const at = (s: string) => new Date(`2026-11-0${s}T00:00:00.000Z`);
 
 describe("GET /api/me/home", () => {
-  it("ロールのない区画は返さない", async () => {
+  it("D-40・D-64: 自分のロールで見られる区画だけを返す", async () => {
     await createUser({ username: "viewer01", role: "viewer" });
-    await createUser({ username: "exec01", role: "worker" });
-    await createUser({ username: "both01", role: "approver" });
+    await createUser({ username: "worker01", role: "worker" });
+    await createUser({ username: "appr01", role: "approver" });
+    await createUser({ username: "admin01", role: "admin" });
+    const all = ["drafts", "myExecutions", "pendingApprovals"];
     expect(await home(await login("viewer01"))).toEqual({});
-    expect(Object.keys(await home(await login("exec01")))).toEqual(["myExecutions"]);
-    expect(Object.keys(await home(await login("both01"))).sort()).toEqual([
+    expect(Object.keys(await home(await login("worker01"))).sort()).toEqual([
       "drafts",
-      "pendingApprovals",
+      "myExecutions",
     ]);
+    expect(Object.keys(await home(await login("appr01"))).sort()).toEqual(all);
+    expect(Object.keys(await home(await login("admin01"))).sort()).toEqual(all);
   });
 
   it("自分の実行は、実行中か差し戻しの自分の実行だけを最終更新の新しい順に返す", async () => {

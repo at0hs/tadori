@@ -1,4 +1,4 @@
-import type { HomeDraft, HomeExecution, MeHomeResponse } from "@tadori/shared";
+import { can, type HomeDraft, type HomeExecution, type MeHomeResponse } from "@tadori/shared";
 import { and, eq, ne, or } from "drizzle-orm";
 import { db } from "../../db/client.ts";
 import { executions } from "../../db/schema/executions.ts";
@@ -65,11 +65,10 @@ async function drafts(): Promise<HomeDraft[]> {
 }
 
 export async function getHome(actor: Actor): Promise<MeHomeResponse> {
-  const has = (role: Actor["roles"][number]) => actor.roles.includes(role);
   const [mine, pending, editing] = await Promise.all([
-    has("executor") ? myExecutions(actor.id) : undefined,
-    has("approver") ? pendingApprovals(actor.id) : undefined,
-    has("author") ? drafts() : undefined,
+    can(actor.role, "execute") ? myExecutions(actor.id) : undefined,
+    can(actor.role, "approve") ? pendingApprovals(actor.id) : undefined,
+    can(actor.role, "editProcedure") ? drafts() : undefined,
   ]);
   const body: MeHomeResponse = {};
   if (mine) body.myExecutions = mine;

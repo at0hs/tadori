@@ -60,17 +60,27 @@ export const procedureRoutes = new Hono<AppEnv>()
     const body: ProcedureVersionResponse = await getVersion(c.get("actor"), id, versionNo);
     return c.json(body);
   })
-  .get("/:id/draft", requirePermission("editProcedure"), pathParams(procedureIdParamSchema), async (c) => {
-    const body: DraftResponse = await getDraft(c.get("actor"), c.req.valid("param").id);
-    return c.json(body);
-  })
-  .post("/", requirePermission("editProcedure"), jsonBody(createProcedureRequestSchema), async (c) => {
-    const body: CreateProcedureResponse = await createProcedure(
-      operatorOf(c),
-      c.req.valid("json").content,
-    );
-    return c.json(body, 201);
-  })
+  .get(
+    "/:id/draft",
+    requirePermission("editProcedure"),
+    pathParams(procedureIdParamSchema),
+    async (c) => {
+      const body: DraftResponse = await getDraft(c.get("actor"), c.req.valid("param").id);
+      return c.json(body);
+    },
+  )
+  .post(
+    "/",
+    requirePermission("editProcedure"),
+    jsonBody(createProcedureRequestSchema),
+    async (c) => {
+      const body: CreateProcedureResponse = await createProcedure(
+        operatorOf(c),
+        c.req.valid("json").content,
+      );
+      return c.json(body, 201);
+    },
+  )
   .put(
     "/:id/draft",
     requirePermission("editProcedure"),
@@ -118,7 +128,12 @@ export const procedureRoutes = new Hono<AppEnv>()
       return c.json(body);
     },
   )
-  .post("/:id/archive", requirePermission("archiveProcedure"), pathParams(procedureIdParamSchema), async (c) => {
-    await archiveProcedure(operatorOf(c), c.req.valid("param").id);
-    return c.body(null, 204);
-  });
+  .post(
+    "/:id/archive",
+    requirePermission("archiveProcedure"),
+    pathParams(procedureIdParamSchema),
+    async (c) => {
+      await archiveProcedure(operatorOf(c), c.req.valid("param").id);
+      return c.body(null, 204);
+    },
+  );

@@ -66,7 +66,9 @@ describe("管理者の復旧のコマンド（D-51）", () => {
     const rows = await db.select().from(userRoles).where(eq(userRoles.userId, id));
     expect(rows).toEqual([expect.objectContaining({ role: "admin", updatedBy: id })]);
     expect(await adminColumnMismatches()).toEqual([]);
-    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({ adminRoleGranted: true });
+    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({
+      adminRoleGranted: true,
+    });
   });
 
   it("ロールの行がないユーザーにも管理者の行を作る", async () => {
@@ -80,7 +82,9 @@ describe("管理者の復旧のコマンド（D-51）", () => {
     await createUser({ username: "admin03", role: "admin" });
     const logs = captureOperationLogs();
     await recoverAdmin("admin03");
-    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({ adminRoleGranted: false });
+    expect(logs.find((l) => l.event === "user.recovered")).toMatchObject({
+      adminRoleGranted: false,
+    });
   });
 
   it("いないユーザー名ならエラーにし、何も変えない", async () => {

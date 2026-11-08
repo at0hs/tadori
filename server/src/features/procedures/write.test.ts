@@ -1,4 +1,4 @@
-import type { DraftLock, ProcedureContent } from "@tadori/shared";
+import type { DraftLock, ProcedureContent, Role } from "@tadori/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   captureOperationLogs,
@@ -15,8 +15,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function author(username = "author01") {
-  const id = await createUser({ username, role: "worker" });
+/** 手順書を書いて公開する人。公開・アーカイブは承認者以上なので、既定は承認者（D-65）。 */
+async function author(username = "author01", role: Role = "approver") {
+  const id = await createUser({ username, role });
   return { id, cookie: await login(username) };
 }
 
@@ -360,11 +361,11 @@ describe("アーカイブ", () => {
   });
 });
 
-describe("権限", () => {
-  it("作成者ロールがなければ、書き込みの API はすべて FORBIDDEN", async () => {
+describe("権限（D-64・D-65）", () => {
+  it("閲覧者は、書き込みの API がすべて FORBIDDEN", async () => {
     const a = await author();
     const id = await created(a.cookie);
-    await createUser({ username: "other01", role: "admin" });
+    await createUser({ username: "other01", role: "viewer" });
     const other = await login("other01");
 
     const results = await Promise.all([
@@ -375,5 +376,42 @@ describe("権限", () => {
       archive(other, id),
     ]);
     expect(results.map((r) => r.status)).toEqual([403, 403, 403, 403, 403]);
+  });
+
+  it("D-65: 作業者は作成・下書きの保存・破棄ができ、公開とアーカイブは FORBIDDEN", async () => {
+    const approver = await author();
+    const publishedId = await published(approver.cookie);
+    const w = await author("worker01", "worker");
+
+    const id = await created(w.cookie);
+    expect((await save(w.cookie, id, { revision: 1 })).status).toBe(200);
+    const pub = await publish(w.cookie, id, { revision: 2 });
+    expect(pub.status).toBe(403);
+    expect((await readJson(pub)).code).toBe("FORBIDDEN");
+    expect((await discard(w.cookie, id, 2)).status).toBe(200);
+
+    expect((await save(w.cookie, publishedId, { revision: null, versionNo: 1 })).status).toBe(200);
+    expect((await archive(w.cookie, publishedId)).status).toBe(403);
+    expect((await detail(w.cookie, publishedId)).status).toBe("editing");
+  });
+
+  it("D-65: 承認者は、作業者が保存した下書きも、自分が保存した下書きも公開できる", async () => {
+    const w = await author("worker01", "worker");
+    const id = await created(w.cookie);
+    const approver = await author();
+    const logs = captureOperationLogs();
+    expect((await publish(approver.cookie, id, { revision: 1 })).status).toBe(200);
+    expect(logs).toEqual([
+      expect.objectContaining({ event: "procedure.published", actorId: approver.id }),
+    ]);
+
+    const own = await created(approver.cookie);
+    expect((await publish(approver.cookie, own, { revision: 1 })).status).toBe(200);
+  });
+
+  it("D-64: 管理者は手順書を作成して公開し、アーカイブできる", async () => {
+    const admin = await author("admin01", "admin");
+    const id = await published(admin.cookie);
+    expect((await archive(admin.cookie, id)).status).toBe(204);
   });
 });

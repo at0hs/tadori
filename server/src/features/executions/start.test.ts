@@ -92,16 +92,12 @@ describe("POST /api/executions", () => {
     expect((await readJson(res)).code).toBe("STATE_CONFLICT");
   });
 
-  it("D-34: 未公開の手順書は、作成者ロールのない実行者には NOT_FOUND", async () => {
+  it("未公開の手順書からは開始できない（作業者には未公開の手順書が見えるので STATE_CONFLICT、D-34）", async () => {
     const { authorId, executor } = await people();
     const procedureId = await insertProcedure({ createdBy: authorId, draft: sampleContent() });
     const res = await start(executor, { procedureId, versionNo: 1, variables: {} });
-    expect(res.status).toBe(404);
-
-    await createUser({ username: "both01", role: "worker" });
-    const res2 = await start(await login("both01"), { procedureId, versionNo: 1, variables: {} });
-    expect(res2.status).toBe(409);
-    expect((await readJson(res2)).code).toBe("STATE_CONFLICT");
+    expect(res.status).toBe(409);
+    expect((await readJson(res)).code).toBe("STATE_CONFLICT");
   });
 
   it("D-01: 秘密変数の値を送ると VALIDATION_FAILED で、実行はできない", async () => {
@@ -145,14 +141,18 @@ describe("POST /api/executions", () => {
     expect(await db.select().from(executions)).toHaveLength(0);
   });
 
-  it("実行者ロールがなければ FORBIDDEN", async () => {
+  it("D-64: 閲覧者は FORBIDDEN、承認者と管理者は開始できる", async () => {
     const { authorId } = await people();
     const procedureId = await publishedProcedure(authorId);
-    const res = await start(await login("author01"), {
-      procedureId,
-      versionNo: 1,
-      variables: DEFAULT_VALUES,
-    });
-    expect(res.status).toBe(403);
+    const body = { procedureId, versionNo: 1, variables: DEFAULT_VALUES };
+    await createUser({ username: "viewer01", role: "viewer" });
+    const denied = await start(await login("viewer01"), body);
+    expect(denied.status).toBe(403);
+    expect((await readJson(denied)).code).toBe("FORBIDDEN");
+
+    for (const role of ["approver", "admin"] as const) {
+      await createUser({ username: `${role}01`, role });
+      expect((await start(await login(`${role}01`), body)).status, role).toBe(201);
+    }
   });
 });

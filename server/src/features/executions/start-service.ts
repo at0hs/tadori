@@ -1,4 +1,4 @@
-import type { StartExecutionRequest, StartExecutionResponse } from "@tadori/shared";
+import { can, type StartExecutionRequest, type StartExecutionResponse } from "@tadori/shared";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db/client.ts";
 import { executionSteps, executions, executionVariables } from "../../db/schema/executions.ts";
@@ -21,8 +21,8 @@ export async function startExecution(
     const row = await findProcedure(tx, input.procedureId, { forUpdate: true });
     if (!row) throw new AppError("NOT_FOUND");
     if (row.latestVersionNo === null) {
-      // 未公開の手順書は作成者ロールの人にしか見えない（D-34）
-      if (!actor.roles.includes("author")) throw new AppError("NOT_FOUND");
+      // 未公開の手順書は作業者以上のロールの人にしか見えない（D-34）
+      if (!can(actor.role, "editProcedure")) throw new AppError("NOT_FOUND");
       throw new AppError("STATE_CONFLICT", "公開されていない手順書からは実行を開始できません。");
     }
     if (row.status === "archived") {

@@ -1,9 +1,10 @@
-import type {
-  DraftResponse,
-  ProcedureDetailResponse,
-  ProcedureSummary,
-  ProcedureVersionListResponse,
-  ProcedureVersionResponse,
+import {
+  can,
+  type DraftResponse,
+  type ProcedureDetailResponse,
+  type ProcedureSummary,
+  type ProcedureVersionListResponse,
+  type ProcedureVersionResponse,
 } from "@tadori/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client.ts";
@@ -22,22 +23,22 @@ import {
 
 // 手順書の読み込み（api.md 4.3）。応答に含める情報は api.md 3章（D-49）に従う。
 // - 下書きの中身は getDraft だけが返す。一覧・詳細のタイトル・タグは最新版の文書から取る。
-// - 未公開の手順書は作成者ロールの人にだけ返す（D-34）。
+// - 未公開の手順書は作業者以上のロールの人にだけ返す（D-34）。
 
-const isAuthor = (actor: Actor) => actor.roles.includes("author");
+const canEditDrafts = (actor: Actor) => can(actor.role, "editProcedure");
 
 /** 見てよい手順書の行を返す。なければ・見てはいけなければ NOT_FOUND（authorization.md 2章の 4）。 */
 async function visibleProcedure(actor: Actor, id: string): Promise<ProcedureRow> {
   const row = await findProcedure(db, id);
   if (!row) throw new AppError("NOT_FOUND");
-  if (row.latestVersionNo === null && !isAuthor(actor)) throw new AppError("NOT_FOUND");
+  if (row.latestVersionNo === null && !canEditDrafts(actor)) throw new AppError("NOT_FOUND");
   return row;
 }
 
 /** 手順書の一覧（S-04）。絞り込み・並べ替えは画面で行う（D-16）。 */
 export async function listProcedures(actor: Actor): Promise<ProcedureSummary[]> {
   const all = await db.select().from(procedures);
-  const rows = isAuthor(actor) ? all : all.filter((r) => r.latestVersionNo !== null);
+  const rows = canEditDrafts(actor) ? all : all.filter((r) => r.latestVersionNo !== null);
   const ids = rows.map((r) => r.id);
   const [versions, drafts] = await Promise.all([latestVersionsOf(db, ids), draftsOf(db, ids)]);
 
@@ -85,7 +86,7 @@ export async function getProcedure(actor: Actor, id: string): Promise<ProcedureD
         }
       : null,
     draft:
-      draft && isAuthor(actor)
+      draft && canEditDrafts(actor)
         ? { updatedBy: name(draft.updatedBy), updatedAt: draft.updatedAt.toISOString() }
         : null,
   };
