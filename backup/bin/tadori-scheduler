@@ -15,18 +15,25 @@ auto="$BACKUP_ROOT/auto"
 
 take_backup() {
   local path
+  acquire_lock
   if path=$(dump_to "$auto"); then
     log "バックアップを取った：$path"
     rotate "$auto" "$keep"
   else
     err "バックアップに失敗した（古いバックアップは消していない）"
   fi
+  release_lock
 }
 
 log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
 
-# 直前の時刻にホストが止まっていた（夜に電源を落とす PC など）なら、起動してすぐ取る
+# 前に止められたとき（docker compose stop の猶予を過ぎて KILL された場合など）の書きかけを消す
 mkdir -p "$auto"
+acquire_lock
+remove_stale_tmp
+release_lock
+
+# 直前の時刻にホストが止まっていた（夜に電源を落とす PC など）なら、起動してすぐ取る
 latest=$(find "$auto" -maxdepth 1 -type f -name 'tadori-*.dump' -printf '%f\n' | sort | tail -n 1)
 if missed_backup "$(date +%s)" "${latest:+$auto/$latest}" "${times[@]}"; then
   log "直前の時刻のバックアップがないので、今取る"

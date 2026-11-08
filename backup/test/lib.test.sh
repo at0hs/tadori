@@ -92,6 +92,43 @@ assert_eq "絶対パスで指定できる" "$dir/auto/tadori-20261108-030000.dum
 assert_fails "ないダンプを断る" env BACKUP_ROOT="$dir" bash -c "source $(dirname "$0")/../lib.sh; resolve_dump auto/nope.dump"
 rm -rf "$dir"
 
+# dump_to（pg_dump と mv を関数で差し替える。関数はコマンド置換の中にも引き継がれる）
+dir=$(mktemp -d)
+pg_dump() { echo dump >"$3"; }
+mv() { return 1; }
+assert_fails "名前を変えられなければ失敗" dump_to "$dir"
+assert_eq "名前を変えられなければ一時ファイルを消す" 0 "$(find "$dir" -type f | wc -l)"
+unset -f mv
+assert_eq "成功したらダンプのパスを出す" 1 "$(dump_to "$dir" | grep -c "^$dir/tadori-.*\.dump$")"
+pg_dump() { echo dump >"$3"; return 1; }
+assert_fails "pg_dump が失敗したら失敗" dump_to "$dir"
+assert_eq "pg_dump が失敗したら一時ファイルを消す" 0 "$(find "$dir" -name '*.tmp' | wc -l)"
+unset -f pg_dump
+rm -rf "$dir"
+
+# remove_stale_tmp（止められて残った書きかけを消す）
+dir=$(mktemp -d)
+mkdir -p "$dir/auto" "$dir/manual"
+touch "$dir/auto/.tadori-20261108-030000.dump.tmp" "$dir/manual/.tadori-20261108-101500.dump.tmp"
+touch "$dir/auto/tadori-20261107-030000.dump" "$dir/auto/other.tmp"
+BACKUP_ROOT="$dir" remove_stale_tmp >/dev/null
+assert_eq "書きかけだけ消す" $'other.tmp\ntadori-20261107-030000.dump' "$(find "$dir" -type f -printf '%f\n' | sort)"
+rm -rf "$dir"
+
+# acquire_lock（バックアップと復元を同時に走らせない）
+dir=$(mktemp -d)
+(BACKUP_ROOT="$dir" acquire_lock >/dev/null && sleep 3) &
+holder=$!
+sleep 1
+assert_fails "ほかが持っている間は取れない" flock -n "$dir/.lock" true
+start=$(date +%s)
+(BACKUP_ROOT="$dir" acquire_lock >/dev/null)
+assert_eq "ほかが外すまで待つ" 1 "$(($(date +%s) - start >= 1 ? 1 : 0))"
+wait "$holder"
+(BACKUP_ROOT="$dir" acquire_lock >/dev/null && release_lock)
+if flock -n "$dir/.lock" true; then echo "ok   外したら取れる"; else echo "FAIL 外したら取れる"; failures=$((failures + 1)); fi
+rm -rf "$dir"
+
 if ((failures > 0)); then
   echo "$failures 件の失敗"
   exit 1

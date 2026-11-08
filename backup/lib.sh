@@ -88,7 +88,33 @@ check_dump() {
   pg_restore -l <"$1" >/dev/null 2>&1
 }
 
+# バックアップと復元を同時に走らせない（復元の途中のダンプや、ダンプの途中の DROP を防ぐ）。
+# $BACKUP_ROOT/.lock を fd 9 で flock する。ほかが持っていれば外れるまで待つ。プロセスが終われば外れる。
+acquire_lock() {
+  mkdir -p "$BACKUP_ROOT"
+  exec 9>"$BACKUP_ROOT/.lock"
+  if ! flock -n 9; then
+    log "ほかのバックアップか復元が終わるのを待つ"
+    flock 9
+  fi
+}
+
+release_lock() {
+  flock -u 9
+  exec 9>&-
+}
+
+# 止められて残った書きかけ（.tadori-….dump.tmp）を消す。ほかが書いている途中のものを消さないよう、ロックを持って呼ぶ。
+remove_stale_tmp() {
+  local f
+  while IFS= read -r f; do
+    rm -f -- "$f"
+    log "残っていた書きかけを消した：$f"
+  done < <(find "$BACKUP_ROOT/auto" "$BACKUP_ROOT/manual" -maxdepth 1 -type f -name '.tadori-*.dump.tmp' 2>/dev/null)
+}
+
 # dir にダンプを取り、そのパスを出す。書きかけは一時的な名前にし、成功してから本来の名前に変える。
+# 呼び出し側は `if path=$(dump_to …)` の形で使い、そこでは set -e が効かないので、失敗はすべて return 1 で返す。
 dump_to() {
   local dir="$1" name tmp
   mkdir -p "$dir"
@@ -99,13 +125,16 @@ dump_to() {
     name="tadori-$(date +%Y%m%d-%H%M%S).dump"
   done
   tmp="$dir/.$name.tmp"
-  if pg_dump -Fc -f "$tmp"; then
-    mv "$tmp" "$dir/$name"
-    echo "$dir/$name"
-  else
+  if ! pg_dump -Fc -f "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
+  if ! mv "$tmp" "$dir/$name"; then
+    err "書きかけを本来の名前に変えられなかった：$tmp"
+    rm -f "$tmp"
+    return 1
+  fi
+  echo "$dir/$name"
 }
 
 # dir のダンプのうち新しい keep 個を残し、古いものを消す。書きかけ（.tmp）は数えない。
