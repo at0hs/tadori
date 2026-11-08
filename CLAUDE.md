@@ -6,14 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は別リポジトリ [at0hs/tadori-docs](https://github.com/at0hs/tadori-docs) にあり、ローカルでは通常 `../tadori-docs/` に置かれている。
 
-- 要件定義：`../tadori-docs/requirements.md`（機能要件 F-01〜F-10、各機能に受け入れ条件 AC）
+- 要件定義：`../tadori-docs/requirements.md`（機能要件 F-01〜F-11、各機能に受け入れ条件 AC）
 - 設計：`../tadori-docs/design/`
 
 実装・テストは要件 ID（F-xx）と AC に紐づけること。仕様の判断に迷ったら、推測で決めずに要件定義・設計を確認する。
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込み、本番用の構成（`compose.yaml`・`Dockerfile`・`backup/`。運用は `../tadori-docs/design/operations.md`）まである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込み、F-11 の下書きの変更点（S-17。API は足さず画面で差分を計算する、D-66）、本番用の構成（`compose.yaml`・`Dockerfile`・`backup/`。運用は `../tadori-docs/design/operations.md`）まである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`、下書きの変更点は `mockups/diff.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
@@ -67,7 +67,7 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - `web/src/routes/`：TanStack Router のルート（ファイルの並びが URL）。`_app.tsx` がログインの確認（未ログインは `/login?redirect=…`、パスワード変更が必要なら `/account/password`）と共通の枠。`routeTree.gen.ts` は Vite のプラグインが作る生成物（コミットする。Biome の対象外）。
 - `web/src/lib/`：API のクライアントとエラー（`api.ts` の `api`・`ApiError`）、画面全体に効くエラーの動き（`query.ts`）、`redirect` の検証、Better Auth のクライアント（`auth-client.ts`）、メニューの項目（`nav.ts`）、ロールの表示名・説明・アイコン（`roles.ts`。できるかどうかの判定は shared の `can` を使う）、テーマ（`theme.ts`。`index.html` にも同じ規則のスクリプトがある）。
 - `web/src/components/`：共通の枠（`app-shell.tsx`）、見出し・0件・エラーの帯・入力欄などの部品。`ui/` は shadcn の部品。
-- `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。
+- `web/src/features/`：機能ごとの部品と Query（`me/`、`auth/`、`users/`、`procedures/`、`executions/`）。手順書の編集画面は `procedures/editor/`（フォームの本体 `procedure-editor.tsx`、CodeMirror の欄 `variable-field.tsx`、ステップのカードと並べ替え `step-list.tsx`）。下書きの変更点（S-17）は `procedures/diff/`（差分の計算 `compute.ts`。jsdiff を使うのはここだけ。要約 `summary.ts`、画面 `diff-page.tsx`）。ステップは id、変数は name で突き合わせ、移動は並びの最長共通部分列に入らないステップ。
 - `web/src/features/executions/`：秘密変数の値の置き場（`secret-store.ts`。モジュールの中の `Map` だけ。ほかのコードは `getSecrets`・`setSecrets`・`useSecrets`・`clearSecrets` で触る。ログアウトとセッション切れで消す）、表示・コピー・入力のマスク（`render.ts`）、S-10（`start-form.tsx`）、S-12（`execution-page.tsx`・`step-card.tsx`・`execution-rail.tsx`・`execution-dialogs.tsx`）、S-11（`execution-list.tsx`・`filter.ts`）、S-12 の見出しに出す承認の操作の判定（`approval-action.ts`）、Excel のダウンロードと「Excel に出力」の置き場所（`download.ts`）。
 - `web/e2e/`：Playwright。`setup.ts` が初期管理者のパスワードを変え、ログイン状態（`e2e/.auth/admin.json`）を他のテストが使い回す。API は `server/test/e2e-server.ts` がテスト用 DB を空にしてから起動する（:3100、画面は :5174）。
 - `compose.dev.yaml`：開発用 DB（:5433、ボリュームあり）とテスト用 DB（:5434、tmpfs）。
@@ -127,4 +127,4 @@ CI（`.github/workflows/ci.yml`）は push と PR で、型チェック・`biome
 - 時刻は UTC で保存し、日本時間で表示する。UI は日本語のみ。対象ブラウザは PC 版の最新 Chrome / Edge。
 - 認証は自作せず、実績のあるライブラリを使う。将来 OIDC による SSO を追加できる構造にする。初期管理者には初回ログイン時にパスワードを変更させる。
 - **開発・動作確認にはダミーデータだけを使う**。実在のホスト名、IP、認証情報、業務・顧客の情報をコード・テスト・シードデータに入れない。
-- MVP でやらないこと（差分表示、画像添付、複数人での分担、SSO/MFA、コマンドの自動実行など）は要件定義「6. 非目標」を参照し、勝手にスコープを広げない。
+- MVP でやらないこと（公開済みの版同士の差分、画像添付、複数人での分担、SSO/MFA、コマンドの自動実行など）は要件定義「6. 非目標」を参照し、勝手にスコープを広げない。
