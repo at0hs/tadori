@@ -110,6 +110,29 @@ test("ロールを選ぶとすぐ反映され、一覧にも出る（D-64）", a
   await expect(page.getByRole("link", { name: /佐藤 次郎/ }).getByText("承認者")).toBeVisible();
 });
 
+test("矢印キーで選んでいる途中のロールは送らず、グループから出たときに最後の1つだけを送る", async ({
+  page,
+}) => {
+  await page.goto("/admin/users");
+  await page.getByRole("link", { name: /佐藤 次郎/ }).click();
+  const sent: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" && req.url().endsWith("/role")) sent.push(req.postData() ?? "");
+  });
+  // 承認者 → 作業者 → 閲覧者 と矢印キーで動かす
+  await page.getByRole("radio", { name: /^承認者/ }).focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeFocused();
+  expect(sent).toEqual([]);
+
+  await page.keyboard.press("Tab");
+  await expect.poll(() => sent).toEqual([JSON.stringify({ role: "viewer" })]);
+  await page.reload();
+  await expect(page.getByRole("radio", { name: /^閲覧者/ })).toBeChecked();
+});
+
 test("自分の詳細ではロールを選べず、⋯ を出さない。ヘッダには自分のロールを出す（D-38）", async ({
   page,
 }) => {

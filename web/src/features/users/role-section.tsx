@@ -56,7 +56,10 @@ export function RoleSection({
           labelledBy="role-heading"
           value={shown}
           onChange={change}
-          disabled={isSelf || setRole.isPending}
+          deferKeyboard
+          // 送信中は disabled にせず（フォーカスが外れるため）読み取り専用にする
+          readOnly={setRole.isPending}
+          disabled={isSelf}
           disabledReason={isSelf ? "自分のロールは変更できません" : undefined}
         />
       </div>
