@@ -3,6 +3,7 @@ import { Check, Copy, FileText, ListOrdered, ListTodo, Lock, Undo2, Variable } f
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/clipboard.ts";
 import { cn } from "@/lib/utils";
 
 // 編集画面の右のパネル（ui.md 7.5）：目次と変数の早見。スクロールしても残す。
@@ -106,11 +107,17 @@ export function EditorRail({ onJump }: { onJump: (path: string) => void }) {
 
 function VariableChip({ name, secret }: { name: string; secret: boolean }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   const text = `#{${name}}`;
   return (
     <li className="group flex items-center gap-2 text-sm">
       <span className="truncate font-mono text-[13px]">{text}</span>
       {secret && <Lock className="size-3.5 shrink-0 text-warning" aria-label="秘密変数" />}
+      {failed && (
+        <span role="alert" className="text-xs text-destructive">
+          コピーできませんでした
+        </span>
+      )}
       <Button
         type="button"
         variant="ghost"
@@ -118,9 +125,15 @@ function VariableChip({ name, secret }: { name: string; secret: boolean }) {
         className="ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
         aria-label={`${text} をコピー`}
         onClick={async () => {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
+          // HTTP のままでもコピーできるよう copyText を使う（lib/clipboard.ts）
+          try {
+            await copyText(text);
+            setFailed(false);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          } catch {
+            setFailed(true);
+          }
         }}
       >
         {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
