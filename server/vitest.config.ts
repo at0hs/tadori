@@ -6,6 +6,7 @@ export default defineProject({
     name: "server",
     env: TEST_ENV,
     globalSetup: ["./test/global-setup.ts"],
+    setupFiles: ["./test/setup.ts"],
     // テスト用の DB を1つ共有するので、ファイルを並べて流さない。
     fileParallelism: false,
   },
