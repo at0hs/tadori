@@ -1,5 +1,6 @@
 import { pool } from "../db/client.ts";
 import { recoverAdmin } from "../features/users/recover.ts";
+import { alsoLogToContainer } from "./container-log.ts";
 
 // 管理者を復旧するコマンド（D-51、operations.md 8章）。app コンテナの中でだけ実行する。
 //   node src/cli/recover-admin.ts <ユーザー名>
@@ -11,6 +12,9 @@ if (!username) {
   process.stderr.write("使い方：node src/cli/recover-admin.ts <ユーザー名>\n");
   process.exit(2);
 }
+
+// 操作ログ（user.recovered）を、実行した端末だけでなくコンテナのログにも残す（受入テストの P-4）
+alsoLogToContainer();
 
 try {
   const { password } = await recoverAdmin(username);

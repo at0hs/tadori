@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { config } from "../config.ts";
 import { db } from "../db/client.ts";
 import { account, session, user, verification } from "../db/schema/auth.ts";
+import { logger } from "../lib/logger.ts";
 import { logOperation } from "../lib/operation-log.ts";
 
 // Better Auth を使うのは auth/ の中だけ（D-14）。ほかのコードは auth/ のモジュールを通す。
@@ -72,6 +73,15 @@ export const auth = betterAuth({
     ...(config.TRUSTED_PROXIES.length > 0
       ? { ipAddress: { trustedProxies: config.TRUSTED_PROXIES } }
       : {}),
+  },
+  // Better Auth 自身のログ（「Invalid password」など）も pino の JSON で出す（D-15、受入テストの P-5）。
+  // 既定では色つきの1行を標準出力に出し、構造化ログに JSON でない行が混じる。
+  // 引数は利用者の入力やユーザーの情報を含みうるので出さない。エラーだけは原因を追えるよう err に入れる。
+  logger: {
+    log: (level, message, ...args) => {
+      const err = args.find((a): a is Error => a instanceof Error);
+      logger[level]({ source: "better-auth", ...(err ? { err } : {}) }, message);
+    },
   },
   plugins: [username(), admin()],
   hooks: {

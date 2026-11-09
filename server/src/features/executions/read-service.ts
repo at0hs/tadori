@@ -53,30 +53,33 @@ async function readExecution(
   if (!row) throw new AppError("NOT_FOUND");
   const { e, v } = row;
 
-  const [variables, steps, events, comments, evidences, approvals] = await Promise.all([
-    ex.select().from(executionVariables).where(eq(executionVariables.executionId, id)),
-    ex.select().from(executionSteps).where(eq(executionSteps.executionId, id)),
-    ex
-      .select()
-      .from(stepStatusEvents)
-      .where(eq(stepStatusEvents.executionId, id))
-      .orderBy(asc(stepStatusEvents.changedAt), asc(stepStatusEvents.id)),
-    ex
-      .select()
-      .from(stepComments)
-      .where(eq(stepComments.executionId, id))
-      .orderBy(asc(stepComments.createdAt), asc(stepComments.id)),
-    ex
-      .select()
-      .from(stepEvidences)
-      .where(eq(stepEvidences.executionId, id))
-      .orderBy(asc(stepEvidences.createdAt), asc(stepEvidences.id)),
-    ex
-      .select()
-      .from(approvalEvents)
-      .where(eq(approvalEvents.executionId, id))
-      .orderBy(asc(approvalEvents.occurredAt), asc(approvalEvents.id)),
-  ]);
+  // 1つのトランザクション（1つの接続）なので、問い合わせは順に流す。並べると pg が警告を出し、
+  // pg 9 では使えなくなる（受入テストの P-6）
+  const variables = await ex
+    .select()
+    .from(executionVariables)
+    .where(eq(executionVariables.executionId, id));
+  const steps = await ex.select().from(executionSteps).where(eq(executionSteps.executionId, id));
+  const events = await ex
+    .select()
+    .from(stepStatusEvents)
+    .where(eq(stepStatusEvents.executionId, id))
+    .orderBy(asc(stepStatusEvents.changedAt), asc(stepStatusEvents.id));
+  const comments = await ex
+    .select()
+    .from(stepComments)
+    .where(eq(stepComments.executionId, id))
+    .orderBy(asc(stepComments.createdAt), asc(stepComments.id));
+  const evidences = await ex
+    .select()
+    .from(stepEvidences)
+    .where(eq(stepEvidences.executionId, id))
+    .orderBy(asc(stepEvidences.createdAt), asc(stepEvidences.id));
+  const approvals = await ex
+    .select()
+    .from(approvalEvents)
+    .where(eq(approvalEvents.executionId, id))
+    .orderBy(asc(approvalEvents.occurredAt), asc(approvalEvents.id));
 
   const name = await userNames(ex, [
     e.executorId,

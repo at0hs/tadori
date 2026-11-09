@@ -174,9 +174,13 @@ test("無効化すると、そのユーザーはログインできない", async
   await page.getByRole("menuitem", { name: "無効化" }).click();
   const dialog = page.getByRole("alertdialog");
   await expect(dialog.getByText("佐藤 次郎 を無効化しますか？")).toBeVisible();
+  // 有効に戻す操作はないので、元に戻せないことを伝える（受入テスト P-2）
+  await expect(dialog.getByText(/無効化は画面から元に戻せません/)).toBeVisible();
   await dialog.getByRole("button", { name: "無効化する" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("無効", { exact: true })).toBeVisible();
+  // 無効化したユーザーには、パスワードの再設定などの操作を出さない（受入テスト P-3）
+  await expect(page.getByRole("button", { name: "その他の操作" })).toHaveCount(0);
 
   const other = await freshPage(browser);
   await login(other, "sato", RESET_PASSWORD);
