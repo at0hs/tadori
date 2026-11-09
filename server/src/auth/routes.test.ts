@@ -147,6 +147,28 @@ describe("F-10 AC: ログインの成功・失敗がログから追える", () =
     expect(JSON.stringify(logs)).not.toContain("Secret-typed-here");
   });
 
+  it("D-15: Better Auth 自身のログも pino に出し、標準出力に JSON でない行を書かない（受入テスト P-5）", async () => {
+    await createUser({ username: "user01" });
+    const { logger } = await import("../lib/logger.ts");
+    const warn = vi.spyOn(logger, "warn").mockImplementation((() => {}) as typeof logger.warn);
+    const consoleCalls = (["log", "info", "warn", "error"] as const).map((m) =>
+      vi.spyOn(console, m).mockImplementation(() => {}),
+    );
+    await request("/api/auth/sign-in/username", {
+      json: { username: "user01", password: "wrong-password-xx" },
+    });
+    await request("/api/auth/sign-in/username", {
+      json: { username: "secrettypedhere", password: "wrong-password-xx" },
+    });
+    expect(warn.mock.calls.map((c) => [c[0], c[1]])).toEqual([
+      [{ source: "better-auth" }, "Invalid password"],
+      [{ source: "better-auth" }, "User not found"],
+    ]);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("wrong-password-xx");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("secrettypedhere");
+    for (const spy of consoleCalls) expect(spy).not.toHaveBeenCalled();
+  });
+
   it("無効化されたユーザーのログインは失敗として出す", async () => {
     await createUser({ username: "admin01", role: "admin" });
     const id = await createUser({ username: "user01" });
