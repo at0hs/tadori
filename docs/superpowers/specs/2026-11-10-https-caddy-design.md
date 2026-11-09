@@ -3,6 +3,18 @@
 - 日付：2026-11-10
 - 関係する決定：D-21（アプリは HTTP、前段のプロキシで HTTPS）、D-52・D-60（プロキシの後ろでの IP）、D-67（閉じたネットワークでも HTTPS を推奨。必須にはしない）
 
+## レビュー後の変更（2026-11-10、ユーザーが決めた）
+
+レビューの I-3 を受け、profile `https` をやめ、HTTPS の部分を別ファイル `compose.https.yaml` に分けた。以下の本文の「profile」「`--profile https`」は、この形に読み替える。
+
+- 理由：profile では、HTTPS を使わない環境にも範囲を固定したネットワーク `proxy` ができる。同じホストで2つ目の環境を起動すると範囲がぶつかって失敗し（受入環境を動かしたまま手元で試す場合など）、社内 LAN と範囲が重なるとその端末から届かなくなる。
+- 足し方：`.env` に `COMPOSE_PATH_SEPARATOR=:` と `COMPOSE_FILE=compose.yaml:compose.https.yaml` を書く（Windows でも同じ書き方で動くことを確かめた）。
+- `compose.https.yaml` は HTTPS のときしか読まないので、次のようにできた。
+  - `CADDY_TLS`・`APP_URL` に `:?`（必須）を使い、空なら起動の前に止める。
+  - app の `TRUSTED_PROXIES` に `CADDY_IP` を自動で入れる（`.env` の `TRUSTED_PROXIES` は使わない。合わせ忘れがなくなる）。
+  - app のポートを `!override` で `127.0.0.1` だけにする（`.env` の `APP_PORT` に `127.0.0.1:` を書かなくてよい）。
+- HTTP の環境の compose.yaml は、main と比べてコメント1行しか変わらない。
+
 ## 目的
 
 ユーザーは「実運用を想定した作り」を望んでいる。D-67 で HTTPS を推奨にしたが、今は operations.md 9章に「Caddy などを置く」とあるだけで、組み方は利用者に任せている。`TRUSTED_PROXIES` の値や証明書の残し方を間違えると、全員がログインの回数制限で締め出される、端末に証明書を入れ直す、といった事故になる。compose に組み込み、手順どおりに進めれば HTTPS で動く形にする。

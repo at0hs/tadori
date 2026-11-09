@@ -1,0 +1,83 @@
+# HTTPS の前段の Caddy（operations.md 9章、D-68）。compose.yaml に重ねて使う。
+# .env に次の2行を書くと、docker compose のコマンドがこのファイルも読む（区切りは OS によらず : にそろえる）。
+#   COMPOSE_PATH_SEPARATOR=:
+#   COMPOSE_FILE=compose.yaml:compose.https.yaml
+# HTTPS を使わない環境はこのファイルを読まないので、ネットワークも増えない。
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    # サーバーの外から、Caddy を通らずに app に届かないようにする
+    ports: !override
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    networks:
+      - default
+      - proxy
+    environment:
+      # 信頼するのは Caddy の IP だけ。範囲を書くと、ゲートウェイ（サーバー自身や Docker Desktop から来た利用者）が
+      # 付けた偽の X-Forwarded-For を信じてしまう。.env の TRUSTED_PROXIES は使わない（合わせ忘れを防ぐ）
+      TRUSTED_PROXIES: ${CADDY_IP:-10.203.53.2}
+
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_URL: ${APP_URL:?APP_URL を .env に書いてください}
+      CADDY_TLS: ${CADDY_TLS:?CADDY_TLS を .env に書いてください（internal／証明書と秘密鍵のファイル／メールアドレス）}
+    # APP_URL は Caddy のサイトのアドレスになる。末尾の / やパスがあると / しか転送されず、ポートがあると 443 で
+    # 待ち受けないのに、Caddy はそのまま起動してしまう。https://<名前> の形でなければ起動を断る（up --wait が失敗する）
+    entrypoint:
+      - sh
+      - -c
+      - |
+        case "$$APP_URL" in
+          https://*/* | https://*:* | *[[:space:]]*) ;;
+          https://?*) exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile ;;
+        esac
+        echo "APP_URL は https://<サーバーの名前> の形で書く（末尾の / ・パス・ポートを付けない）：'$$APP_URL'" >&2
+        exit 1
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 持ち込みの証明書の置き場（コミットしない）
+      - ./certs:/certs:ro
+      # 取った証明書と、internal のルート証明書。消すとルート証明書が変わり、全端末で入れ直しになる
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      proxy:
+        ipv4_address: ${CADDY_IP:-10.203.53.2}
+    # 設定を読めたときだけ管理用の口が開く。CADDY_TLS の書き間違いなどで再起動を繰り返すと、up --wait が失敗する
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    logging: *logging
+
+networks:
+  # Caddy と app だけがつながるネットワーク。Caddy に決まった IP を割り当てるため、範囲を固定する。
+  # 既定は Docker が自動で割り当てる範囲（172.17〜172.31、192.168）の外。
+  # ip_range は app に自動で割り当てる範囲。CADDY_IP と重ならないよう後ろ半分に限る（重なると app が先に取る）。
+  # 同じホストで HTTPS の環境を2つ動かすときなど、ぶつかるときは PROXY_SUBNET・PROXY_IP_RANGE・CADDY_IP をそろえて変える。
+  proxy:
+    ipam:
+      config:
+        - subnet: ${PROXY_SUBNET:-10.203.53.0/24}
+          ip_range: ${PROXY_IP_RANGE:-10.203.53.128/25}
+
+volumes:
+  caddy-data:
+  caddy-config:

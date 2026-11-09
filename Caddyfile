@@ -1,4 +1,4 @@
-# HTTPS の前段（operations.md 9章、D-67、D-68）。`docker compose --profile https up -d` で起動する。
+# HTTPS の前段（operations.md 9章、D-67、D-68）。compose.https.yaml を重ねて起動する。
 # サイトのアドレスは APP_URL（https://…）。Better Auth の基準 URL と同じ値なので、ホスト名がずれない。
 # tls の引数は CADDY_TLS。値の空白で引数が分かれる。
 #   internal                              … Caddy が自分の認証局で証明書を出す（ルート証明書を端末に信頼させる）

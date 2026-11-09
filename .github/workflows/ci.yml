@@ -100,7 +100,7 @@ jobs:
       - if: failure()
         run: docker compose logs
 
-  # HTTPS の前段（Caddy、--profile https）を起動し、証明書の2通りと転送のヘッダの扱いを確かめる（operations.md 9章、D-68）
+  # HTTPS の前段（Caddy、compose.https.yaml）を起動し、証明書の2通りと転送のヘッダの扱いを確かめる（operations.md 9章、D-68）
   compose-https:
     runs-on: ubuntu-latest
     steps:
@@ -116,12 +116,12 @@ jobs:
           INITIAL_ADMIN_EMAIL=admin@example.test
           INITIAL_ADMIN_PASSWORD=Ci-initial-passw0rd
           CADDY_TLS=internal
-          TRUSTED_PROXIES=10.203.53.2
-          APP_PORT=127.0.0.1:3000
+          COMPOSE_PATH_SEPARATOR=:
+          COMPOSE_FILE=compose.yaml:compose.https.yaml
           ENV
           # 先に作る。無いまま起動すると、bind mount のために dockerd が root の持ち物で作り、後で書けなくなる
           mkdir -p certs
-      - run: docker compose --profile https up -d --build --wait
+      - run: docker compose up -d --build --wait
       - name: internal のルート証明書で HTTPS が通る
         run: |
           docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt root.crt
@@ -155,7 +155,7 @@ jobs:
           openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 2 -extfile server.ext
           cat server.crt ca.crt > certs/tadori.crt
           sed -i 's|^CADDY_TLS=.*|CADDY_TLS=/certs/tadori.crt /certs/tadori.key|' .env
-          docker compose --profile https up -d --wait
+          docker compose up -d --wait
           curl --cacert ca.crt -fsS https://localhost/api/health
       - if: failure()
-        run: docker compose --profile https logs
+        run: docker compose logs
