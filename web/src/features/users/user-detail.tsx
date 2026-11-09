@@ -70,8 +70,9 @@ export function UserDetail({ userId }: { userId: string }) {
             {user.username} ・ {user.email}
           </p>
         </div>
-        {/* 自分自身には出さない（D-37、D-38） */}
-        {!isSelf && (
+        {/* 自分自身と、無効化したユーザーには出さない（D-37、D-38、受入テストの P-3）。
+            無効化したユーザーはログインできないので、パスワードを再設定しても意味がない */}
+        {!isSelf && !user.banned && (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="icon" aria-label="その他の操作" />}
@@ -83,15 +84,11 @@ export function UserDetail({ userId }: { userId: string }) {
                 <KeyRound className="text-muted-foreground" aria-hidden />
                 パスワードを再設定
               </DropdownMenuItem>
-              {!user.banned && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setDialog("ban")}>
-                    <UserX aria-hidden />
-                    無効化
-                  </DropdownMenuItem>
-                </>
-              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={() => setDialog("ban")}>
+                <UserX aria-hidden />
+                無効化
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
