@@ -106,6 +106,36 @@ assert_eq "pg_dump が失敗したら一時ファイルを消す" 0 "$(find "$di
 unset -f pg_dump
 rm -rf "$dir"
 
+# backup_with_retry（失敗したら間を置いてやり直す。P-8）
+# pg_dump を、決まった回数だけ失敗する関数に差し替える。回数はコマンド置換をまたぐのでファイルで数える。
+dir=$(mktemp -d)
+calls="$dir/calls"
+fail_times=0
+pg_dump() {
+  local n
+  n=$(($(cat "$calls" 2>/dev/null || echo 0) + 1))
+  echo "$n" >"$calls"
+  ((n > fail_times)) || return 1
+  echo dump >"$3"
+}
+fail_times=2
+BACKUP_RETRY_DELAYS="0 0 0" BACKUP_ROOT="$dir" backup_with_retry "$dir/auto" 7 >/dev/null 2>&1
+assert_eq "2回失敗しても3回目で取れる" "0 3 1" "$? $(cat "$calls") $(find "$dir/auto" -name 'tadori-*.dump' | wc -l)"
+rm -f "$calls"
+fail_times=9
+BACKUP_RETRY_DELAYS="0 0" BACKUP_ROOT="$dir" backup_with_retry "$dir/manual" 7 >/dev/null 2>&1
+assert_eq "やり直しは間隔の数まで（1回＋2回）で、失敗を返す" "1 3 0" "$? $(cat "$calls") $(find "$dir/manual" -name 'tadori-*.dump' 2>/dev/null | wc -l)"
+assert_eq "失敗して待つことと、やり直すことをログに出す" 1 "$(rm -f "$calls"; BACKUP_RETRY_DELAYS="0" BACKUP_ROOT="$dir" backup_with_retry "$dir/manual" 7 2>&1 >/dev/null | grep -c '0秒後にやり直す（1/1）')"
+rm -f "$calls"
+fail_times=0
+mkdir -p "$dir/rot"
+touch "$dir/rot/tadori-20261101-030000.dump" "$dir/rot/tadori-20261102-030000.dump"
+BACKUP_RETRY_DELAYS="0" BACKUP_ROOT="$dir" backup_with_retry "$dir/rot" 2 >/dev/null 2>&1
+assert_eq "取れたら古いものを消す" 2 "$(find "$dir/rot" -name 'tadori-*.dump' | wc -l)"
+if flock -n "$dir/.lock" true; then echo "ok   終わったらロックを外している"; else echo "FAIL 終わったらロックを外している"; failures=$((failures + 1)); fi
+unset -f pg_dump
+rm -rf "$dir"
+
 # remove_stale_tmp（止められて残った書きかけを消す）
 dir=$(mktemp -d)
 mkdir -p "$dir/auto" "$dir/manual"
