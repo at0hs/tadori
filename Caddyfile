@@ -1,0 +1,11 @@
+# HTTPS の前段（operations.md 9章、D-67、D-68）。`docker compose --profile https up -d` で起動する。
+# サイトのアドレスは APP_URL（https://…）。Better Auth の基準 URL と同じ値なので、ホスト名がずれない。
+# tls の引数は CADDY_TLS。値の空白で引数が分かれる。
+#   internal                              … Caddy が自分の認証局で証明書を出す（ルート証明書を端末に信頼させる）
+#   /certs/tadori.crt /certs/tadori.key   … 置いた証明書を使う（社内の認証局などで発行したもの）
+#   <メールアドレス>                       … Let's Encrypt から取る（インターネットに公開する場合）
+# 転送のヘッダ（X-Forwarded-For など）は、利用者が付けてきた値を捨てて Caddy が付け直す（Caddy の既定）。
+{$APP_URL} {
+	tls {$CADDY_TLS}
+	reverse_proxy app:3000
+}

@@ -39,7 +39,7 @@
   - 環境変数：`APP_URL`（サイトのアドレスとして使う）、`CADDY_TLS`（`internal`、`/certs/<証明書> /certs/<秘密鍵>`、メールアドレスのどれか）。
     - compose の `:?`（必須）は使えない。compose は profile で外したサービスの変数も展開するので、`:?` にすると HTTPS を使わない `docker compose up` まで止まる（Compose v5.6.1 で確かめた）。空のときは Caddy が Caddyfile の読み込みで止まり、`docker compose logs caddy` に出る。
   - `restart: unless-stopped`、ログの設定は他と同じ。
-- ネットワーク：Caddy と app だけがつながるネットワーク `proxy` を足し、アドレスの範囲を固定して（`PROXY_SUBNET`、既定 `10.203.53.0/24`）、Caddy に決まった IP を割り当てる（`CADDY_IP`、既定 `10.203.53.2`）。社内 LAN や同じホストの別の環境とぶつかるときは両方を変える。app は既定のネットワークと `proxy` の両方につなぐ（profile なしでも `proxy` はできる）。
+- ネットワーク：Caddy と app だけがつながるネットワーク `proxy` を足し、アドレスの範囲を固定して（`PROXY_SUBNET`、既定 `10.203.53.0/24`）、Caddy に決まった IP を割り当てる（`CADDY_IP`、既定 `10.203.53.2`）。app などに自動で割り当てる範囲は `PROXY_IP_RANGE`（既定 `10.203.53.128/25`）に限る（重なると app が先に Caddy の IP を取り、Caddy が起動できない。実装で確かめた）。社内 LAN や同じホストの別の環境とぶつかるときは3つをそろえて変える。app は既定のネットワークと `proxy` の両方につなぐ（profile なしでも `proxy` はできる）。
   - `TRUSTED_PROXIES` には `CADDY_IP` と同じ値を1つだけ書く。範囲全体は信頼しない：サーバー自身から開いたときや Docker Desktop では、利用者が `proxy` のゲートウェイ（`10.203.53.1`）から来たように見え、範囲全体を信頼するとその利用者が付けたヘッダを信じてしまう。
   - 既定の範囲を Docker が自動で割り当てる範囲（172.17〜172.31、192.168）の外にしたのは、ほかのネットワークとぶつかりにくくするため。
   - `TRUSTED_PROXIES` は自動では入れない。プロキシなしで動かすときは空のままにする（今と同じ）。
