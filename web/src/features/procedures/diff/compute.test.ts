@@ -133,6 +133,25 @@ describe("diffProcedure：ステップ", () => {
     const d = diffProcedure(content({ steps: [A, B] }), content({ steps: [B, A] }));
     expect(d.steps.filter((s) => s.moved)).toHaveLength(1);
   });
+  it("F-11 AC: 1番目と3番目を入れ替えたら、その2つが移動で、間のステップは移動にしない（受入テスト P-7）", () => {
+    const d = diffProcedure(
+      content({ steps: [A, B, C] }),
+      content({ steps: [C, { ...B, title: "新しい題" }, A] }),
+    );
+    expect(d.steps.map((s) => [s.id, s.status, s.moved, s.oldNo, s.newNo])).toEqual([
+      [C.id, "same", true, 3, 1],
+      [B.id, "mod", false, 2, 2],
+      [A.id, "same", true, 1, 3],
+    ]);
+  });
+  it("1番目と4番目を入れ替えたら、その2つだけが移動", () => {
+    const d = diffProcedure(content({ steps: [A, B, C, D] }), content({ steps: [D, B, C, A] }));
+    expect(d.steps.filter((s) => s.moved).map((s) => s.id)).toEqual([D.id, A.id]);
+  });
+  it("1つを先頭へ動かしたら、動かしたものだけが移動", () => {
+    const d = diffProcedure(content({ steps: [A, B, C, D] }), content({ steps: [D, A, B, C] }));
+    expect(d.steps.filter((s) => s.moved).map((s) => s.id)).toEqual([D.id]);
+  });
   it("エビデンス必須だけを変えても mod、前後の値を持つ", () => {
     const d = diffProcedure(
       content({ steps: [A] }),
