@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useBanUser } from "./queries.ts";
 
 // 無効化の確認（screens.md 4章）。実行中の実行があれば件数を案内する（D-36）。
+// 有効に戻す操作はないので、元に戻せないことを伝える（authorization.md、受入テストの P-2）。
 export function BanUserDialog({
   user,
   runningCount,
@@ -45,6 +46,7 @@ export function BanUserDialog({
             </AlertDialogTitle>
             <AlertDialogDescription>
               無効化すると、このユーザーはログインできなくなります。記録との紐づけは残ります。
+              無効化は元に戻せません。このユーザー名は、新しく作るユーザーにも使えなくなります。
             </AlertDialogDescription>
           </div>
         </div>
