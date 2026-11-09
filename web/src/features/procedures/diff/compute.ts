@@ -121,20 +121,27 @@ const plainLines = (text: string): LinePart[] => lineDiff(text, text);
 
 /**
  * 両方にある ID の並びの最長共通部分列に入らないものを返す。
- * 長さが同じ候補が複数あるときは下書きの側を進め、前へ動かしたものを移動にする。
+ * 長さが同じ候補が複数あるときは、両方にある ID の並びの中で位置が変わらないものを多く残す候補を選ぶ
+ * （1番目と3番目を入れ替えたら、1番目と3番目が移動で、2番目は移動にしない。受入テストの P-7）。
+ * それでも並ぶときは下書きの側を進め、前へ動かしたものを移動にする。
  */
 function movedIds(oldIds: string[], newIds: string[]): Set<string> {
   const inNew = new Set(newIds);
   const inOld = new Set(oldIds);
   const a = oldIds.filter((id) => inNew.has(id));
   const b = newIds.filter((id) => inOld.has(id));
-  // L(i, j)：最新版の i 番目以降と下書きの j 番目以降の最長共通部分列の長さ
+  // S(i, j)：最新版の i 番目以降と下書きの j 番目以降の共通部分列の点数の最大。
+  // 1つ残すごとに (長さの重み) 点、位置が同じならさらに 1 点。位置の点は合わせても長さの重みに届かないので、
+  // 長さが最優先で、長さが同じときだけ位置の点で決まる。
+  const weight = a.length + 1;
   const w = b.length + 1;
   const table = new Array<number>((a.length + 1) * w).fill(0);
-  const L = (i: number, j: number) => table[i * w + j] ?? 0;
+  const S = (i: number, j: number) => table[i * w + j] ?? 0;
+  const keep = (i: number, j: number) => weight + (i === j ? 1 : 0) + S(i + 1, j + 1);
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {
-      table[i * w + j] = a[i] === b[j] ? L(i + 1, j + 1) + 1 : Math.max(L(i + 1, j), L(i, j + 1));
+      const skip = Math.max(S(i + 1, j), S(i, j + 1));
+      table[i * w + j] = a[i] === b[j] ? Math.max(keep(i, j), skip) : skip;
     }
   }
   const lcs = new Set<string>();
@@ -142,11 +149,11 @@ function movedIds(oldIds: string[], newIds: string[]): Set<string> {
   let j = 0;
   while (i < a.length && j < b.length) {
     const id = a[i];
-    if (id !== undefined && id === b[j]) {
+    if (id !== undefined && id === b[j] && S(i, j) === keep(i, j)) {
       lcs.add(id);
       i++;
       j++;
-    } else if (L(i + 1, j) > L(i, j + 1)) {
+    } else if (S(i + 1, j) > S(i, j + 1)) {
       i++;
     } else {
       j++;
