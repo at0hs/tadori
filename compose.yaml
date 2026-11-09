@@ -84,6 +84,18 @@ services:
     environment:
       APP_URL: ${APP_URL:-}
       CADDY_TLS: ${CADDY_TLS:-}
+    # APP_URL は Caddy のサイトのアドレスになる。末尾の / やパスがあると / しか転送されず、ポートがあると 443 で
+    # 待ち受けないのに、Caddy はそのまま起動してしまう。https://<名前> の形でなければ起動を断る（up --wait が失敗する）
+    entrypoint:
+      - sh
+      - -c
+      - |
+        case "$$APP_URL" in
+          https://*/* | https://*:* | *[[:space:]]*) ;;
+          https://?*) exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile ;;
+        esac
+        echo "APP_URL は https://<サーバーの名前> の形で書く（末尾の / ・パス・ポートを付けない）：'$$APP_URL'" >&2
+        exit 1
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # 持ち込みの証明書の置き場（コミットしない）

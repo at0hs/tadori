@@ -57,7 +57,8 @@
 - サイトのアドレスに `APP_URL` をそのまま使う。Better Auth の基準 URL・CSRF・Cookie の Secure と、Caddy が待ち受けるホスト名がずれない。IP アドレスの URL（例：`https://192.168.1.10`）でも `tls internal` なら証明書が出る。
 - `CADDY_TLS` は Caddyfile を読む前に展開されるので、値の空白で引数が分かれる。
   - `tls internal`：Caddy が自分の認証局で証明書を出す。
-  - `tls /certs/tadori.crt /certs/tadori.key`：置いたファイルを使う。証明書のファイルには中間証明書もつなげて入れる。自動では更新しないので、期限の前に差し替えて `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile` で読み込み直す。
+  - `tls /certs/tadori.crt /certs/tadori.key`：置いたファイルを使う。証明書のファイルには中間証明書もつなげて入れる。自動では更新しないので、期限の前に差し替えて `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --force` で読み込み直す（`--force` がないと、設定が同じなので読み込み直さない。レビューの I-1、実際に差し替えて確かめた）。
+- `APP_URL` が `https://<名前>` の形でない（末尾の `/`・パス・ポート・http）と、Caddy は `/` だけを転送したり 443 で待ち受けなかったりしたまま起動する。caddy の entrypoint で形を確かめ、違えば起動を断る（レビューの I-2）。
   - `tls <メールアドレス>`：Let's Encrypt から取る（DNS とポート 80/443 が外から届くことが前提）。
 - 転送のヘッダ：Caddy は、信頼するプロキシを設定していなければ、利用者が付けてきた `X-Forwarded-For` を捨てて付け直す。operations.md 9章の「プロキシは自分で付け直す」を満たす。
 - HTTP（80）に来たら HTTPS に移す。Caddy の既定の動きに任せる。

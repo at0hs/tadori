@@ -119,6 +119,8 @@ jobs:
           TRUSTED_PROXIES=10.203.53.2
           APP_PORT=127.0.0.1:3000
           ENV
+          # 先に作る。無いまま起動すると、bind mount のために dockerd が root の持ち物で作り、後で書けなくなる
+          mkdir -p certs
       - run: docker compose --profile https up -d --build --wait
       - name: internal のルート証明書で HTTPS が通る
         run: |
@@ -133,14 +135,19 @@ jobs:
             -H 'Origin: https://localhost' -H 'Content-Type: application/json' -H 'X-Forwarded-For: 203.0.113.99' \
             -d '{"username":"admin","password":"wrong-password"}')
           test "$code" = 401
-          docker compose logs app | grep '"event":"auth.login_failed"' | tail -1 | tee login.txt
+          # ログがコンテナのログに書かれるまで少し待つことがある
+          for i in 1 2 3 4 5; do
+            docker compose logs app | grep '"event":"auth.login_failed"' | tail -1 > login.txt || true
+            test -s login.txt && break
+            sleep 1
+          done
+          cat login.txt
           grep -q '"ip":"' login.txt
           if grep -q -e '203.0.113.99' -e '"ip":"10.203.53.2"' -e '"ip":"::ffff:10.203.53.2"' login.txt; then
             echo "IP が偽の値か Caddy の IP になっている"; exit 1
           fi
       - name: 持ち込みの証明書（自前の認証局で発行）で HTTPS が通る
         run: |
-          mkdir -p certs
           openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 2 -subj '/CN=Tadori CI CA' \
             -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign'
           openssl req -newkey rsa:2048 -nodes -keyout certs/tadori.key -out server.csr -subj '/CN=localhost'
