@@ -137,6 +137,36 @@ dump_to() {
   echo "$dir/$name"
 }
 
+# 自動のバックアップを dir に取り、成功したら古いものを消す。失敗したら間を置いてやり直す。
+# Docker の再起動で backup が db より先に起動したとき（compose の depends_on が効かない）や、
+# 一時的な失敗で、次の時刻（既定では翌日）までバックアップがない状態を避けるため。
+# 間隔は BACKUP_RETRY_DELAYS（秒、空白区切り。既定で合わせて約19分）。ロックは試すたびに取り、待つ間は外す。
+backup_with_retry() {
+  local dir="$1" keep="$2" path delay attempt=1
+  local -a delays
+  read -r -a delays <<<"${BACKUP_RETRY_DELAYS:-10 30 60 120 300 600}"
+  while true; do
+    acquire_lock
+    if path=$(dump_to "$dir"); then
+      log "バックアップを取った：$path"
+      rotate "$dir" "$keep"
+      release_lock
+      return 0
+    fi
+    release_lock
+    if ((attempt > ${#delays[@]})); then
+      err "バックアップに失敗した。やり直しをやめる（古いバックアップは消していない）"
+      return 1
+    fi
+    delay=${delays[attempt - 1]}
+    err "バックアップに失敗した。${delay}秒後にやり直す（${attempt}/${#delays[@]}）"
+    # 裏で sleep して wait する（呼び出し側の TERM をすぐ受け取るため）
+    sleep "$delay" &
+    wait $!
+    attempt=$((attempt + 1))
+  done
+}
+
 # dir のダンプのうち新しい keep 個を残し、古いものを消す。書きかけ（.tmp）は数えない。
 rotate() {
   local dir="$1" keep="$2" i

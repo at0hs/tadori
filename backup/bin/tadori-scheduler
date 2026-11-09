@@ -13,16 +13,9 @@ keep="${BACKUP_KEEP:-7}"
 validate_keep "$keep"
 auto="$BACKUP_ROOT/auto"
 
+# 失敗してもやり直しは backup_with_retry が行う。やり直しきれなければ次の時刻に取る
 take_backup() {
-  local path
-  acquire_lock
-  if path=$(dump_to "$auto"); then
-    log "バックアップを取った：$path"
-    rotate "$auto" "$keep"
-  else
-    err "バックアップに失敗した（古いバックアップは消していない）"
-  fi
-  release_lock
+  backup_with_retry "$auto" "$keep" || true
 }
 
 log "バックアップの時刻：${times[*]}（$TZ）、残す数：$keep"
