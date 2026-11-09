@@ -15,6 +15,10 @@ export function alsoLogToContainer(path = "/proc/1/fd/1"): boolean {
   } catch {
     return false;
   }
-  addLogDestination(pino.destination({ fd, sync: true }));
+  const stream = pino.destination({ fd, sync: true });
+  // 書けなくなっても例外にしない。復旧のコマンドでは、コミットした後に操作ログを出すので、
+  // ここで落ちると、復旧はできたのに仮のパスワードを出せなくなる。実行した端末にはこれまでどおり出る
+  stream.on("error", () => {});
+  addLogDestination(stream);
   return true;
 }
