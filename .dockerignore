@@ -10,3 +10,5 @@ web/e2e/.auth
 coverage
 .superpowers
 docs
+# .git の中の設定（リモートの URL に認証情報が書かれることがある）は、SHA を読むのに要らないので入れない
+.git/config

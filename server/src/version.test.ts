@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readVersionInfo } from "./version.ts";
 
@@ -36,6 +36,12 @@ describe("readVersionInfo", () => {
   });
 
   it("既定の git は、git の作業ツリーでない所では null になる", () => {
-    expect(readVersionInfo({ rootDir }).commit).toBe("unknown");
+    // 一時ディレクトリが作業ツリーの中にある環境でも、上をたどらせない
+    vi.stubEnv("GIT_CEILING_DIRECTORIES", dirname(rootDir));
+    try {
+      expect(readVersionInfo({ rootDir }).commit).toBe("unknown");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

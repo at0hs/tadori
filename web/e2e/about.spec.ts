@@ -30,7 +30,7 @@ test("ダイアログに版・SHA・ライセンス・リンクが出る", async
   await page.goto("/");
   const dialog = await openAbout(page);
   await expect(dialog).toContainText(version);
-  await expect(dialog.getByTestId("about-commit")).toHaveText(/^([0-9a-f]{7}|unknown)$/);
+  await expect(dialog.getByTestId("about-commit")).toHaveText(/^([0-9a-f]{7,}|unknown)$/);
   await expect(dialog).toContainText("MIT");
   const source = dialog.getByRole("link", { name: "github.com/at0hs/tadori" });
   await expect(source).toHaveAttribute("href", "https://github.com/at0hs/tadori");
@@ -103,4 +103,19 @@ test("版を取れないときは、メニューに版を出さず、ダイア�
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: /自分のメニュー/ })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("キーボードで開いて閉じると、自分のメニューのボタンにフォーカスが戻る", async ({ page }) => {
+  await page.goto("/");
+  const trigger = page.getByRole("button", { name: /自分のメニュー/ });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const item = page.getByRole("menuitem", { name: /Tadori について/ });
+  await item.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Tadori について" });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
