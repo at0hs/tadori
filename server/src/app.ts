@@ -1,3 +1,4 @@
+import type { VersionResponse } from "@tadori/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { authRoutes } from "./auth/routes.ts";
@@ -12,6 +13,7 @@ import { logger } from "./lib/logger.ts";
 import { verifyOrigin } from "./middleware/csrf.ts";
 import { requestContext } from "./middleware/request-context.ts";
 import { requirePasswordChanged, requireSession } from "./middleware/session.ts";
+import { versionInfo } from "./version.ts";
 
 // Hono のアプリの組み立て（conventions.md 1章）。
 // ミドルウェアは登録した順に効く。下に足すルートほど、多くの確認を通る。
@@ -24,6 +26,8 @@ export const app = new Hono<AppEnv>()
   .get("/health", (c) => c.json({ status: "ok" }))
   // ここから下はログインが必要
   .use(requireSession)
+  // 版と SHA（D-69）。パスワードの変更前でも返す（変更前の人も自分のメニューから開けるため）
+  .get("/version", (c) => c.json(versionInfo satisfies VersionResponse))
   .route("/me", meRoutes)
   // ここから下はパスワードの変更が済んでいることが必要
   .use(requirePasswordChanged)
