@@ -19,6 +19,7 @@ beforeAll(() => {
   writeFileSync(join(distDir, "index.html"), "<p>index</p>");
   writeFileSync(join(distDir, "assets", "app-abc123.js"), "console.log(1)");
   writeFileSync(join(parent, "secret.txt"), "top-secret");
+  writeFileSync(join(distDir, "THIRD_PARTY_LICENSES.txt"), "ライセンス");
 });
 
 afterAll(() => {
@@ -46,6 +47,13 @@ describe("画面の配信", () => {
     const res = await root().request("/assets/app-abc123.js");
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+  });
+
+  it("ライセンスの一覧は UTF-8 の文字として返す（D-69、見出しが日本語）", async () => {
+    const res = await root().request("/THIRD_PARTY_LICENSES.txt");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+    expect(await res.text()).toBe("ライセンス");
   });
 
   it("assets の下にないファイルは 404 で、index.html を返さない", async () => {

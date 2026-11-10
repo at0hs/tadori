@@ -34,6 +34,8 @@ jobs:
       - run: pnpm biome ci .
       - run: pnpm test
       - run: pnpm build
+      - name: ライセンスの一覧ができ、Tadori 自身を含まない（D-69）
+        run: grep -qx 'react (MIT)' web/dist/THIRD_PARTY_LICENSES.txt && ! grep -q '@tadori/' web/dist/THIRD_PARTY_LICENSES.txt
       # E2E（ui.md 7章）。API はテスト用 DB を空にして起動するので、pnpm test の後に流す。
       - run: pnpm --filter @tadori/web exec playwright install --with-deps chromium
       - run: pnpm e2e
@@ -62,6 +64,13 @@ jobs:
           ENV
       - run: docker compose up -d --build --wait
       - run: curl -fsS http://localhost:3000/api/health
+      # 版の表示（D-69）。イメージの SHA はビルドの中で .git から読む
+      - name: イメージの SHA がこのコミットと一致する
+        run: test "$(docker compose exec -T app cat /app/COMMIT)" = "$(git rev-parse --short=7 HEAD)"
+      - name: .git のないソースからもビルドでき、SHA は unknown になる
+        run: |
+          git archive --format=tar HEAD | docker build --target commit -t tadori-commit-nogit -
+          test "$(docker run --rm --entrypoint cat tadori-commit-nogit /COMMIT)" = unknown
       - name: 画面の URL を直接開くと index.html が返る
         run: curl -fsS http://localhost:3000/executions/x | grep -q 'id="root"'
       - name: バックアップのスクリプトのテスト

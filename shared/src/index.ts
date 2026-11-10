@@ -35,6 +35,7 @@ export {
   userNameSchema,
   usernameSchema,
 } from "./schemas/users.ts";
+export * from "./schemas/version.ts";
 export { findVariableRefs, VARIABLE_NAME_RE, type VariableRef } from "./variables/parse.ts";
 export {
   maskSecrets,
