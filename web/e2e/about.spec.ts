@@ -52,6 +52,42 @@ test("コピーすると「版 (SHA)」の形でクリップボードに入る",
   );
 });
 
+test("一度取れなくても、ダイアログを開き直すと取り直す", async ({ page }) => {
+  let failing = true;
+  await page.route("**/api/version", (route) =>
+    failing ? route.fulfill({ status: 500, body: "down" }) : route.continue(),
+  );
+  await page.goto("/");
+  const dialog = await openAbout(page);
+  await expect(dialog).toContainText("取得できませんでした");
+  failing = false;
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  const again = await openAbout(page);
+  await expect(again.getByTestId("about-commit")).toHaveText(/^([0-9a-f]{7,}|unknown)$/);
+});
+
+test("HTTP（navigator.clipboard がない）でも、ダイアログの中からコピーできる", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  // 安全でない接続と同じく navigator.clipboard を隠す。読み出しには元のものを取っておく
+  // （e2e の型には DOM がないので、ブラウザで動かす部分は文字列で渡す）
+  await page.addInitScript(
+    "window.realClipboard = navigator.clipboard;" +
+      "Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });",
+  );
+  await page.goto("/");
+  const dialog = await openAbout(page);
+  const commit = await dialog.getByTestId("about-commit").textContent();
+  await dialog.getByRole("button", { name: "版とコミットをコピー" }).click();
+  await expect(dialog.getByRole("button", { name: "コピーしました" })).toBeVisible();
+  expect(await page.evaluate<string>("window.realClipboard.readText()")).toBe(
+    `${version} (${commit})`,
+  );
+});
+
 test("版を取れないときは、メニューに版を出さず、ダイアログで伝える", async ({ page }) => {
   await page.route("**/api/version", (route) => route.fulfill({ status: 500, body: "down" }));
   await page.goto("/");

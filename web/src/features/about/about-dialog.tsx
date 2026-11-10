@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { copyText } from "@/lib/clipboard.ts";
@@ -18,8 +18,13 @@ export function AboutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data, isError } = useQuery(versionQueryOptions);
+  const { data, isError, refetch } = useQuery(versionQueryOptions);
   const [copied, setCopied] = useState(false);
+
+  // 取り直しは自動ではしない（staleTime が無限）ので、取れなかったときは開くたびに取り直す
+  useEffect(() => {
+    if (open && isError) void refetch();
+  }, [open, isError, refetch]);
   const [copyFailed, setCopyFailed] = useState(false);
 
   const copy = async () => {
