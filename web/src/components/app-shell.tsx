@@ -1,6 +1,6 @@
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, KeyRound, LogOut, Monitor, Moon, Sun, SunMoon } from "lucide-react";
+import { ChevronDown, Info, KeyRound, LogOut, Monitor, Moon, Sun, SunMoon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { AppLogo } from "@/components/app-logo.tsx";
 import {
@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AboutDialog } from "@/features/about/about-dialog.tsx";
+import { versionQueryOptions } from "@/features/about/queries.ts";
 import { clearSecrets } from "@/features/executions/secret-store.ts";
 import { meQueryOptions } from "@/features/me/queries.ts";
 import { authClient } from "@/lib/auth-client.ts";
@@ -67,6 +69,9 @@ function UserMenu({ name, role }: { name: string; role: string }) {
   const { preference, setPreference } = useTheme();
 
   const [logoutFailed, setLogoutFailed] = useState(false);
+  // 版は取れなくてもヘッダは出す（Suspense にしない）。取れないときはダイアログで伝える
+  const { data: versionInfo } = useQuery(versionQueryOptions);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // 失敗したら（通信できない・サーバーのエラー）、ログインしたままなので画面に残って知らせる。
   // 401 はセッションがもうないので、ログアウトできたものとして扱う。
@@ -143,6 +148,13 @@ function UserMenu({ name, role }: { name: string; role: string }) {
             </ToggleGroup>
           </div>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setAboutOpen(true)}>
+            <Info className="text-muted-foreground" aria-hidden />
+            Tadori について
+            {versionInfo && (
+              <span className="ml-auto text-xs text-muted-foreground">v{versionInfo.version}</span>
+            )}
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate({ to: "/account/password" })}>
             <KeyRound className="text-muted-foreground" aria-hidden />
             パスワードの変更
@@ -153,6 +165,8 @@ function UserMenu({ name, role }: { name: string; role: string }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* メニューが閉じてもダイアログが残るよう、メニューの外に置く */}
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </div>
   );
 }
