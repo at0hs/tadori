@@ -99,3 +99,63 @@ jobs:
         run: docker compose up -d --wait && curl -fsS http://localhost:3000/api/health
       - if: failure()
         run: docker compose logs
+
+  # HTTPS の前段（Caddy、compose.https.yaml）を起動し、証明書の2通りと転送のヘッダの扱いを確かめる（operations.md 9章、D-68）
+  compose-https:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: ダミーの .env を書く
+        run: |
+          cat > .env <<'ENV'
+          APP_URL=https://localhost
+          POSTGRES_PASSWORD=ci0123456789abcdef
+          BETTER_AUTH_SECRET=ci-secret-ci-secret-ci-secret-0123456789
+          INITIAL_ADMIN_USERNAME=admin
+          INITIAL_ADMIN_NAME=管理者
+          INITIAL_ADMIN_EMAIL=admin@example.test
+          INITIAL_ADMIN_PASSWORD=Ci-initial-passw0rd
+          CADDY_TLS=internal
+          COMPOSE_PATH_SEPARATOR=:
+          COMPOSE_FILE=compose.yaml:compose.https.yaml
+          ENV
+          # 先に作る。無いまま起動すると、bind mount のために dockerd が root の持ち物で作り、後で書けなくなる
+          mkdir -p certs
+      - run: docker compose up -d --build --wait
+      - name: internal のルート証明書で HTTPS が通る
+        run: |
+          docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt root.crt
+          curl --cacert root.crt -fsS https://localhost/api/health
+      - name: HTTP に来たら HTTPS に移す
+        run: curl -sI http://localhost/ | grep -q '^HTTP/1.1 308'
+      # 利用者が付けた X-Forwarded-For は Caddy が捨てる。操作ログの IP は偽の値にも Caddy の IP にもならない
+      - name: 偽の X-Forwarded-For を信じない
+        run: |
+          code=$(curl --cacert root.crt -s -o /dev/null -w '%{http_code}' -X POST https://localhost/api/auth/sign-in/username \
+            -H 'Origin: https://localhost' -H 'Content-Type: application/json' -H 'X-Forwarded-For: 203.0.113.99' \
+            -d '{"username":"admin","password":"wrong-password"}')
+          test "$code" = 401
+          # ログがコンテナのログに書かれるまで少し待つことがある
+          for i in 1 2 3 4 5; do
+            docker compose logs app | grep '"event":"auth.login_failed"' | tail -1 > login.txt || true
+            test -s login.txt && break
+            sleep 1
+          done
+          cat login.txt
+          grep -q '"ip":"' login.txt
+          if grep -q -e '203.0.113.99' -e '"ip":"10.203.53.2"' -e '"ip":"::ffff:10.203.53.2"' login.txt; then
+            echo "IP が偽の値か Caddy の IP になっている"; exit 1
+          fi
+      - name: 持ち込みの証明書（自前の認証局で発行）で HTTPS が通る
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 2 -subj '/CN=Tadori CI CA' \
+            -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign'
+          openssl req -newkey rsa:2048 -nodes -keyout certs/tadori.key -out server.csr -subj '/CN=localhost'
+          printf 'subjectAltName=DNS:localhost\nbasicConstraints=CA:FALSE\nextendedKeyUsage=serverAuth\n' > server.ext
+          openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 2 -extfile server.ext
+          cat server.crt ca.crt > certs/tadori.crt
+          sed -i 's|^CADDY_TLS=.*|CADDY_TLS=/certs/tadori.crt /certs/tadori.key|' .env
+          docker compose up -d --wait
+          curl --cacert ca.crt -fsS https://localhost/api/health
+      - if: failure()
+        run: docker compose logs

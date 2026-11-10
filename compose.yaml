@@ -1,5 +1,6 @@
 # 本番用の構成（operations.md 2章）。`.env` を書いて `docker compose up -d` で起動する。
 # 開発用の DB は compose.dev.yaml（pnpm db:up）。
+# HTTPS の前段（Caddy）は compose.https.yaml を重ねて起動する（operations.md 9章）。
 # `docker compose down -v` は DB のボリュームを消すので使わない（operations.md 11章）。
 
 # ログの大きさと世代の上限（operations.md 10章）。ディスクを使い切らないようにする。
