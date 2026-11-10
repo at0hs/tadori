@@ -2,6 +2,14 @@
 # server と shared はビルドしない（Node が .ts の型を消して動かす）。Node は node_modules の中の .ts を
 # 動かさないため、pnpm deploy は使わず、ワークスペースの並び（シンボリックリンク）のまま入れる。
 
+# コミットの SHA（画面の「Tadori について」、D-69）。.git がなければ unknown にして、ビルドは止めない。
+# .gi[t] は、.git がないときに何も選ばず COPY を失敗させないためのワイルドカード。
+# ディレクトリは中身が写るので、/src をそのまま git のディレクトリとして読む。
+# ビルドする人と .git の持ち主が違っても読めるよう、safe.directory を付ける。
+FROM alpine/git:v2.52.0 AS commit
+COPY package.json .gi[t] /src/
+RUN (git --git-dir=/src -c safe.directory='*' rev-parse --short=7 HEAD 2>/dev/null || echo unknown) > /COMMIT
+
 FROM node:26-slim AS base
 WORKDIR /app
 # pnpm の版は package.json の packageManager に合わせる（Node 26 には corepack がない）
@@ -30,6 +38,7 @@ RUN pnpm install --prod --frozen-lockfile --filter "@tadori/server..." \
 COPY shared shared
 COPY server server
 COPY --from=build /app/web/dist web/dist
+COPY --from=commit /COMMIT COMMIT
 ENV WEB_DIST_DIR=/app/web/dist \
   PORT=3000
 USER node
