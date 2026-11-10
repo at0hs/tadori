@@ -7,3 +7,4 @@ playwright-report/
 .env
 backups/
 certs/
+tadori-root.crt
