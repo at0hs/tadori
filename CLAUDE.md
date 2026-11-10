@@ -8,6 +8,7 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 - 要件定義：`../tadori-docs/requirements.md`（機能要件 F-01〜F-11、各機能に受け入れ条件 AC）
 - 設計：`../tadori-docs/design/`
+- 作業ごとの設計と計画：`../tadori-docs/superpowers/`（`specs/`・`plans/`）。受入テストの記録：`../tadori-docs/acceptance/`。このリポジトリに `docs/` は作らない
 
 実装・テストは要件 ID（F-xx）と AC に紐づけること。仕様の判断に迷ったら、推測で決めずに要件定義・設計を確認する。
 
