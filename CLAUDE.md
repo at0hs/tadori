@@ -8,13 +8,14 @@ Tadori（手順書管理 Web アプリ）のアプリ本体。要件・設計は
 
 - 要件定義：`../tadori-docs/requirements.md`（機能要件 F-01〜F-11、各機能に受け入れ条件 AC）
 - 設計：`../tadori-docs/design/`
-- 作業ごとの設計と計画：`../tadori-docs/superpowers/`（`specs/`・`plans/`）。受入テストの記録：`../tadori-docs/acceptance/`。このリポジトリに `docs/` は作らない
+- 作業ごとの設計と計画：`../tadori-docs/superpowers/`（`specs/`・`plans/`）。受入テストの記録：`../tadori-docs/acceptance/`
+- 運用の手順（利用者向け）：このリポジトリの `docs/operations.md`。リポジトリを公開し tadori-docs は公開しないため、利用者が読む文書だけをここに置く。設計・計画・受入テストの記録はここに置かない
 
 実装・テストは要件 ID（F-xx）と AC に紐づけること。仕様の判断に迷ったら、推測で決めずに要件定義・設計を確認する。
 
 ## 現状
 
-雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込み、F-11 の下書きの変更点（S-17。API は足さず画面で差分を計算する、D-66）、本番用の構成（`compose.yaml`・`Dockerfile`・`backup/`。運用は `../tadori-docs/design/operations.md`）、版の表示（`GET /api/version`、自分のメニューの「Tadori について」、D-69）まである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`、下書きの変更点は `mockups/diff.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
+雛形と認証の骨組み（Better Auth・Drizzle・CSRF・IP の付け直し・初期管理者・`GET /api/me`）、F-01 の API（管理者の `/api/admin/users`、ロールの確認、操作ログ、復旧のコマンド）、画面の土台（ルーター・Query・shadcn/ui・テーマ・ログインの確認）と F-01 の画面（S-01、S-02、S-13〜S-16）、F-02・F-03 の手順書の API（`/api/procedures`）と画面（S-04〜S-09）、F-04〜F-06 の変数・実行・ステップの記録の API（`/api/executions`）と画面（S-10 実行の開始、S-11 実行の一覧、S-12 実行、S-15 の実行中の実行）、F-08 の承認・差し戻し・再依頼の API（`/api/executions/{id}/approve` など）と S-12 の操作、F-09 の Excel 出力の API（`GET /api/executions/{id}/export`）と S-12 の「Excel に出力」、ホーム（S-03、`GET /api/me/home`）と S-11 の実行者の絞り込み、F-11 の下書きの変更点（S-17。API は足さず画面で差分を計算する、D-66）、本番用の構成（`compose.yaml`・`Dockerfile`・`backup/`。運用は `docs/operations.md`）、版の表示（`GET /api/version`、自分のメニューの「Tadori について」、D-69）まである。画面の見た目と土台の決まりは `../tadori-docs/design/ui.md`（見た目の正本は `mockups/frame.html`、手順書の画面は `mockups/procedures.html`、実行の画面は `mockups/executions.html`、下書きの変更点は `mockups/diff.html`）。基本設計は `../tadori-docs/design/README.md`、技術スタックとシステム構成は設計判断 D-10〜D-22 で決めた。
 
 - TypeScript（Node.js 26 LTS、strict）、pnpm workspace で `server/`・`web/`・`shared/` に分ける。全部入りのフレームワークは使わない。
 - `server/`：Hono、Drizzle（1.0。正式版がなければ最新の RC）、Better Auth（認証だけ。認可は自前）
