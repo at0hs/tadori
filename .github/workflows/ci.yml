@@ -34,6 +34,8 @@ jobs:
       - run: pnpm biome ci .
       - run: pnpm test
       - run: pnpm build
+      - name: ライセンスの一覧ができ、Tadori 自身を含まない（D-69）
+        run: grep -qx 'react (MIT)' web/dist/THIRD_PARTY_LICENSES.txt && ! grep -q '@tadori/' web/dist/THIRD_PARTY_LICENSES.txt
       # E2E（ui.md 7章）。API はテスト用 DB を空にして起動するので、pnpm test の後に流す。
       - run: pnpm --filter @tadori/web exec playwright install --with-deps chromium
       - run: pnpm e2e

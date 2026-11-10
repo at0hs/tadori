@@ -8,6 +8,6 @@ export default defineProject({
   test: {
     name: "web",
     environment: "jsdom",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "build/**/*.test.ts"],
   },
 });
