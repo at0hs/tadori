@@ -83,7 +83,8 @@ function conflictText(c: DraftConflict): string {
     case "version_published":
       return `${who} が ${when} に新しい版を公開しました。`;
     case "draft_discarded":
-      return "下書きが破棄されました。";
+      // サーバーは破棄されたのか公開されたのかを見分けない（write-service の checkLock）
+      return "下書きが破棄されたか、公開されました。";
   }
 }
 
@@ -136,6 +137,7 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [conflict, setConflict] = useState<DraftConflict | null>(null);
   const [reloading, setReloading] = useState(false);
+  const [reloadError, setReloadError] = useState<unknown>(null);
 
   const base = detail.data?.latestVersion ?? null;
   // lock.revision が null なら下書きはない（応答の content は最新版）
@@ -151,14 +153,15 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
   for (const e of [detail.error, draft.error]) {
     if (isApiError(e, "NOT_FOUND") || isApiError(e, "FORBIDDEN")) return <ProcedureNotFound />;
   }
-  if (detail.error) return <ErrorBanner error={detail.error} />;
+  // 画面をエラーに置き換えるのは、まだ何も読めていないときだけ。読み込み直しの失敗では前の内容が残る
+  if (detail.error && !detail.data) return <ErrorBanner error={detail.error} />;
   if (detail.isPending) return <DocumentSkeleton />;
   if (detail.data.status === "unpublished" || !base) {
     return <Navigate to="/procedures/$procedureId/edit" params={{ procedureId }} replace />;
   }
   // アーカイブした手順書の下書きは STATE_CONFLICT（下書きはない扱い）
   const noDraft = isApiError(draft.error, "STATE_CONFLICT") || (draft.data && !draftData);
-  if (!noDraft && draft.error) return <ErrorBanner error={draft.error} />;
+  if (!noDraft && draft.error && !draft.data) return <ErrorBanner error={draft.error} />;
   if (!noDraft && (draft.isPending || !diff || !summary)) return <DocumentSkeleton />;
 
   /** 公開時の検証に通らない下書きは、編集画面で場所を示す。 */
@@ -209,15 +212,17 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
 
   async function onReload() {
     setReloading(true);
+    setReloadError(null);
     try {
       await Promise.all([
         queryClient.fetchQuery({ ...procedureQueryOptions(procedureId), staleTime: 0 }),
         queryClient.fetchQuery({ ...draftQueryOptions(procedureId), staleTime: 0 }),
       ]);
-    } catch {
-      // 取り直しの失敗は、それぞれの Query のエラーとして画面に出る
-    } finally {
       setConflict(null);
+    } catch (e) {
+      // 前の内容と競合の帯は残し、もう一度読み込み直せるようにする
+      setReloadError(e);
+    } finally {
       setReloading(false);
     }
   }
@@ -239,8 +244,17 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
       }
     />
   );
-  const banner = conflict && (
-    <PublishConflictBanner conflict={conflict} onReload={onReload} reloading={reloading} />
+  const banner = (
+    <>
+      {reloadError !== null && (
+        <div className="mt-4">
+          <ErrorBanner error={reloadError} />
+        </div>
+      )}
+      {conflict && (
+        <PublishConflictBanner conflict={conflict} onReload={onReload} reloading={reloading} />
+      )}
+    </>
   );
 
   if (noDraft || !draftData || !diff || !summary) {
