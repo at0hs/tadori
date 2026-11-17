@@ -86,7 +86,9 @@ test("F-11 AC：S-05 から変更点を開き、追加・削除・変更・移�
   await expect(steps.getByText("変更", { exact: true })).toBeVisible();
   await expect(steps.getByText("3 ステップ（v1 は 3）")).toBeVisible();
   // 足した文字は、読み上げでも分かる
-  await expect(steps.locator("ins", { hasText: "設定を" }).locator(".sr-only")).toHaveText("追加：");
+  await expect(steps.locator("ins", { hasText: "設定を" }).locator(".sr-only")).toHaveText(
+    "追加：",
+  );
 });
 
 test("F-11 AC：前に足して番号がずれただけのステップは変更なしにまとまる", async ({ page }) => {
