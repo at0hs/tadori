@@ -506,6 +506,7 @@ export function ProcedureEditor({
         )}
         {banner?.kind === "conflict" && (
           <ConflictBanner
+            canPublish={canPublish}
             conflict={banner.conflict}
             reloading={reloading}
             onReload={onReload}

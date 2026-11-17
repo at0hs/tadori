@@ -22,11 +22,14 @@ function conflictText(c: DraftConflict): string {
 /** 楽観ロックのエラー（D-05、D-55）。上書きする手段は出さない。 */
 export function ConflictBanner({
   conflict,
+  canPublish,
   onOpenLatest,
   onReload,
   reloading,
 }: {
   conflict: DraftConflict;
+  /** 公開できないロール（作業者）には「保存」とだけ言う（D-65） */
+  canPublish: boolean;
   onOpenLatest: () => void;
   onReload: () => void;
   reloading: boolean;
@@ -46,7 +49,7 @@ export function ConflictBanner({
           <p className="font-medium">{title}</p>
           <p className="mt-0.5 text-foreground">
             {conflictText(conflict)}
-            あなたの入力はこの画面に残っていますが、このままでは保存・公開できません。
+            {`あなたの入力はこの画面に残っていますが、このままでは${canPublish ? "保存・公開" : "保存"}できません。`}
           </p>
         </div>
       </div>

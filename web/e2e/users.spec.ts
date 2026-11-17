@@ -22,6 +22,8 @@ test("ユーザーを作ると詳細に移り、作ったユーザーは初回�
   // ロールは既定で選ばれていない。選ばずに押すと欄にエラーを出す（ui.md 5.4）
   await page.getByRole("button", { name: "作成する" }).click();
   await expect(page.getByText("ロールを選んでください。")).toBeVisible();
+  // フォーカスはロールの最初の選択肢に移る
+  await expect(page.getByRole("radio", { name: /^管理者/ })).toBeFocused();
   await expect(page).toHaveURL("/admin/users/new");
   await page.getByRole("radio", { name: /^作業者/ }).click();
   await page.getByRole("button", { name: "作成する" }).click();

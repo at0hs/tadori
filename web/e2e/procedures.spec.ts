@@ -429,5 +429,17 @@ test("D-65: 作業者には「公開する」を出さず案内を出し、保�
     await worker.getByRole("button", { name: "保存" }).click();
     await expect(worker.getByText("保存していない変更があります")).toHaveCount(0);
     await expect(worker.getByText(/最終保存/)).toBeVisible();
+
+    // ほかの人が先に保存し直すと競合の帯が出る。作業者は公開できないので「保存できません」とだけ言う
+    const draft = await (await author.request.get(`/api/procedures/${id}/draft`)).json();
+    const resaved = await author.request.put(`/api/procedures/${id}/draft`, {
+      headers,
+      data: { content: { ...draft.content, summary: "承認者が直した" }, lock: draft.lock },
+    });
+    expect(resaved.ok()).toBe(true);
+    await worker.getByLabel("概要", { exact: true }).fill("作業者がもう一度直した");
+    await worker.getByRole("button", { name: "保存" }).click();
+    await expect(worker.getByText(/このままでは保存できません。/)).toBeVisible();
+    await expect(worker.getByText(/保存・公開/)).toHaveCount(0);
   });
 });

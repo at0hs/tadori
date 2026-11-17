@@ -21,6 +21,7 @@ export function RoleRadio({
   invalid,
   name,
   labelledBy,
+  focusRef,
 }: {
   value: Role | undefined;
   onChange: (role: Role) => void;
@@ -33,6 +34,8 @@ export function RoleRadio({
   name: string;
   /** 見出しの要素の id（選択肢のまとまりの名前） */
   labelledBy?: string;
+  /** 最初の選択肢に付ける ref（react-hook-form が検証エラーのときにフォーカスを移す） */
+  focusRef?: React.Ref<HTMLElement>;
 }) {
   const [draft, setDraft] = useState<Role | null>(null);
   const keyboard = useRef(false);
@@ -75,7 +78,7 @@ export function RoleRadio({
         aria-invalid={invalid || undefined}
         className="gap-0 overflow-hidden rounded-lg border"
       >
-        {ROLES.map((role) => {
+        {ROLES.map((role, i) => {
           const Icon = ROLE_ICONS[role];
           return (
             // biome-ignore lint/a11y/noLabelWithoutControl: RadioGroupItem は中の button が欄になる
@@ -86,7 +89,12 @@ export function RoleRadio({
                 disabled && "cursor-not-allowed opacity-60",
               )}
             >
-              <RadioGroupItem value={role} aria-invalid={invalid || undefined} className="mt-0.5" />
+              <RadioGroupItem
+                ref={i === 0 ? focusRef : undefined}
+                value={role}
+                aria-invalid={invalid || undefined}
+                className="mt-0.5"
+              />
               <span className="grid gap-0.5">
                 <span className="flex items-center gap-1.5 font-medium">
                   <Icon className="size-4 text-muted-foreground" aria-hidden />
