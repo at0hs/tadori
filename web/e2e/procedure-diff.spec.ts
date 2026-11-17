@@ -221,6 +221,33 @@ test("読み込み直しに失敗しても、見出しと前の内容を残し�
   await expect(page.getByRole("button", { name: "公開する" })).toBeEnabled();
 });
 
+test("競合の後にアーカイブされていたら、読み込み直すと下書きがないと出し、帯を残さない", async ({
+  page,
+}) => {
+  const a = step("確かめる");
+  const draft = content("差分の確認 14", [{ ...a, title: "よく確かめる" }]);
+  const { id, revision } = await publishedWithDraft(page, content("差分の確認 14", [a]), draft);
+  await page.goto(`/procedures/${id}/draft/diff`);
+  await expect(page.getByRole("region", { name: "手順", exact: true })).toBeVisible();
+  const resaved = await page.request.put(`/api/procedures/${id}/draft`, {
+    headers,
+    data: { content: { ...draft, summary: "あとから足した" }, lock: { revision } },
+  });
+  expect(resaved.ok()).toBe(true);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel("変更理由").fill("古い内容で公開しようとした");
+  await dialog.getByRole("button", { name: "公開する" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "公開できませんでした" })).toBeVisible();
+
+  // その後にアーカイブされた（下書きも消える）
+  const archived = await page.request.post(`/api/procedures/${id}/archive`, { headers });
+  expect(archived.ok()).toBe(true);
+  await page.getByRole("button", { name: "読み込み直す" }).click();
+  await expect(page.getByText("下書きはありません")).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 test("開いた後に下書きが破棄されていたら、破棄か公開かを見分けずに伝える", async ({ page }) => {
   const a = step("確かめる");
   const { id, revision } = await publishedWithDraft(

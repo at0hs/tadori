@@ -220,6 +220,11 @@ export function DraftDiffPage({ procedureId }: { procedureId: string }) {
       ]);
       setConflict(null);
     } catch (e) {
+      if (isApiError(e, "STATE_CONFLICT")) {
+        // アーカイブされて下書きがなくなった。画面は「下書きはありません」になるので、帯は片付ける
+        setConflict(null);
+        return;
+      }
       // 前の内容と競合の帯は残し、もう一度読み込み直せるようにする
       setReloadError(e);
     } finally {
