@@ -47,6 +47,19 @@ function DialogHead({
 }
 
 /** 公開。変更理由は必須（F-03）。 */
+/**
+ * 公開のダイアログに出す、最新版からの変更の要約（F-11、ui.md 10.4）。
+ * 最新版をまだ読めていないか、読めなかったときは state で伝える（公開はできる）。
+ */
+export type PublishSummary =
+  | { text: string; diffLink?: { procedureId: string } }
+  | { state: "loading" | "failed"; diffLink?: { procedureId: string } };
+
+const SUMMARY_STATE_TEXT = {
+  loading: "変更点を計算しています…",
+  failed: "変更点の要約を出せませんでした",
+} as const;
+
 export function PublishDialog({
   open,
   onOpenChange,
@@ -64,8 +77,8 @@ export function PublishDialog({
   error: unknown;
   onPublish: (changeReason: string) => void;
   description?: string;
-  /** 最新版からの変更の要約（F-11、ui.md 10.4）。text が空なら枠を出さない */
-  summary?: { text: string; diffLink?: { procedureId: string } } | null;
+  /** 最新版からの変更の要約。text が空なら枠を出さない */
+  summary?: PublishSummary | null;
 }) {
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
@@ -92,7 +105,7 @@ export function PublishDialog({
           <DialogHead icon={Send} tone="primary" title={`v${nextVersionNo} として公開しますか？`}>
             {description}
           </DialogHead>
-          {summary && summary.text !== "" && (
+          {summary && !("text" in summary && summary.text === "") && (
             <div className="rounded-lg border px-4 py-3 text-sm">
               <div className="flex items-center gap-2 font-medium">
                 <GitCompare className="size-4 text-muted-foreground" aria-hidden />v
@@ -109,7 +122,9 @@ export function PublishDialog({
                   </Link>
                 )}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{summary.text}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {"text" in summary ? summary.text : SUMMARY_STATE_TEXT[summary.state]}
+              </p>
             </div>
           )}
           <div className="grid gap-1.5">

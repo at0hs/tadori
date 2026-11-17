@@ -308,3 +308,44 @@ test("S-09 の公開のダイアログに v1 からの変更の要約が出る",
     "_blank",
   );
 });
+
+test("S-09 で最新版を読めないうちは、要約の代わりに状態を出す", async ({ page }) => {
+  const a = step("確かめる");
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 12", [a]),
+    content("差分の確認 12", [a, step("片付ける")]),
+  );
+  // 手順書（最新版）の返事だけを止める。編集画面は下書きの API で開く
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/procedures/${id}`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto(`/procedures/${id}/edit`);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("変更点を計算しています…")).toBeVisible();
+  // 返事が届くと、開いたままのダイアログで要約に変わる
+  release();
+  await expect(dialog.getByText("手順：追加 1")).toBeVisible();
+  await expect(dialog.getByText("変更点を計算しています…")).toHaveCount(0);
+});
+
+test("S-09 で最新版を読めなかったら、要約を出せなかったと伝え、公開はできる", async ({ page }) => {
+  const a = step("確かめる");
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 13", [a]),
+    content("差分の確認 13", [a, step("片付ける")]),
+  );
+  await page.route(`**/api/procedures/${id}`, (route) => route.abort());
+  await page.goto(`/procedures/${id}/edit`);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("変更点の要約を出せませんでした")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "公開する" })).toBeEnabled();
+});

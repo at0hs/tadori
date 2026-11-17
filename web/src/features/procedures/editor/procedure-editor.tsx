@@ -21,7 +21,7 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
 import { ErrorBanner } from "@/components/error-banner.tsx";
 import { Breadcrumbs } from "@/components/page-header.tsx";
@@ -54,7 +54,12 @@ import {
   ErrorListBanner,
   SessionBanner,
 } from "./conflict-banner.tsx";
-import { DiscardDialog, PublishDialog, UnsavedDialog } from "./editor-dialogs.tsx";
+import {
+  DiscardDialog,
+  PublishDialog,
+  type PublishSummary,
+  UnsavedDialog,
+} from "./editor-dialogs.tsx";
 import { EditorRail } from "./editor-rail.tsx";
 import { type ErrorRow, emptyContent, errorSummary, toFormPath } from "./form.ts";
 import { BasicSection, PrerequisitesSection, SectionTitle, VariablesSection } from "./sections.tsx";
@@ -136,11 +141,22 @@ export function ProcedureEditor({
   const [publishOpen, setPublishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [reloading, setReloading] = useState(false);
-  const [publishSummary, setPublishSummary] = useState<string | null>(null);
+  // 公開のダイアログを開いたときの画面の内容。要約はこれと最新版から描画のたびに作る
+  // （最新版の読み込みが後から終わっても、開いたままのダイアログで要約に変わるように）
+  const [publishContent, setPublishContent] = useState<ProcedureContent | null>(null);
   // 公開済みの手順書だけ、公開のダイアログに最新版からの変更の要約を出す
   const hasVersion = mode === "edit" && meta.baseVersionNo !== null;
-  const { data: detail } = useQuery({ ...procedureQueryOptions(id), enabled: hasVersion });
-  const latest = hasVersion ? (detail?.latestVersion ?? null) : null;
+  const detailQuery = useQuery({ ...procedureQueryOptions(id), enabled: hasVersion });
+  const latest = hasVersion ? (detailQuery.data?.latestVersion ?? null) : null;
+  const publishSummary = useMemo((): PublishSummary | null => {
+    if (!hasVersion || publishContent === null) return null;
+    const diffLink = meta.status === "editing" ? { procedureId: id } : undefined;
+    if (latest) {
+      const text = summaryText(summarizeDiff(diffProcedure(latest.content, publishContent)));
+      return { text, diffLink };
+    }
+    return { state: detailQuery.isError ? "failed" : "loading", diffLink };
+  }, [hasVersion, publishContent, latest, detailQuery.isError, meta.status, id]);
 
   const create = useCreateProcedure();
   const save = useSaveDraft(id);
@@ -267,9 +283,7 @@ export function ProcedureEditor({
     publish.reset();
     create.reset();
     // 最新版からの変更の要約は、画面の今の内容と比べる（保存の前に出すため、ui.md 10.4）
-    setPublishSummary(
-      latest ? summaryText(summarizeDiff(diffProcedure(latest.content, content))) : null,
-    );
+    setPublishContent(content);
     setPublishOpen(true);
   });
 
@@ -551,14 +565,7 @@ export function ProcedureEditor({
         pending={create.isPending || publish.isPending}
         error={publish.error ?? create.error}
         onPublish={onPublish}
-        summary={
-          publishSummary === null
-            ? null
-            : {
-                text: publishSummary,
-                diffLink: meta.status === "editing" ? { procedureId: id } : undefined,
-              }
-        }
+        summary={publishSummary}
       />
       <DiscardDialog
         open={discardOpen}
