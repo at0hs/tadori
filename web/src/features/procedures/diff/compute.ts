@@ -1,4 +1,9 @@
-import type { ProcedureContent, ProcedureStep, ProcedureVariable } from "@tadori/shared";
+import {
+  findVariableRefs,
+  type ProcedureContent,
+  type ProcedureStep,
+  type ProcedureVariable,
+} from "@tadori/shared";
 import { diffArrays } from "diff";
 
 // 下書きと最新版の差分（F-11、D-66）。API は足さず、画面で計算する。
@@ -50,9 +55,25 @@ export type ProcedureDiff = {
 
 const segmenter = new Intl.Segmenter("ja", { granularity: "word" });
 
-/** 単語の区切りで割る。空白・改行も1つの部品として残す（つなげば元の文に戻る）。 */
+/**
+ * 単語の区切りで割る。空白・改行も1つの部品として残す（つなげば元の文に戻る）。
+ * `#{name}` は1つの部品にする（名前だけが違っても参照ごと入れ替わり、変数の色が付くように）。
+ */
 function tokenize(text: string): string[] {
-  return Array.from(segmenter.segment(text), (s) => s.segment);
+  const refs = findVariableRefs(text);
+  const tokens: string[] = [];
+  let pos = 0;
+  const words = (end: number) => {
+    if (end <= pos) return;
+    for (const s of segmenter.segment(text.slice(pos, end))) tokens.push(s.segment);
+  };
+  for (const ref of refs) {
+    words(ref.start);
+    tokens.push(text.slice(ref.start, ref.end));
+    pos = ref.end;
+  }
+  words(text.length);
+  return tokens;
 }
 
 /**

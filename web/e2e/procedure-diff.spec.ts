@@ -113,6 +113,21 @@ test("F-11 AC：下書きが最新版と同じなら、変更がないと出る"
   await expect(page.getByText("保存した下書きは、公開済みの v1 と同じ内容です。")).toBeVisible();
 });
 
+test("変数を秘密に変えると、既定値が消えたことも出る", async ({ page }) => {
+  const a = step("#{token} を確かめる");
+  const v = { name: "token", description: "", default: "abcd", secret: false };
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 9", [a], { variables: [v] }),
+    content("差分の確認 9", [a], { variables: [{ ...v, default: null, secret: true }] }),
+  );
+  await page.goto(`/procedures/${id}/draft/diff`);
+  const vars = page.getByRole("region", { name: "変数", exact: true });
+  await expect(vars.getByText("秘密：")).toBeVisible();
+  await expect(vars.getByText("既定値：")).toBeVisible();
+  await expect(vars.locator("del", { hasText: "abcd" })).toBeVisible();
+});
+
 test("S-17 から公開すると S-05 に戻り、版が上がる", async ({ page }) => {
   const a = step("確かめる");
   const { id } = await publishedWithDraft(

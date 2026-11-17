@@ -74,6 +74,36 @@ describe("textDiff", () => {
     expect(textDiff("同じ", "同じ")).toEqual([{ kind: "same", text: "同じ" }]);
     expect(textDiff("", "")).toEqual([]);
   });
+  it("#{…} は1つの部品として比べる（名前だけ変えても参照ごと入れ替わる）", () => {
+    expect(textDiff("#{host} を確かめる", "#{hostname} を確かめる")).toEqual([
+      { kind: "del", text: "#{host}" },
+      { kind: "add", text: "#{hostname}" },
+      { kind: "same", text: " を確かめる" },
+    ]);
+  });
+  it("隣り合う参照は別々に比べる", () => {
+    expect(textDiff("#{a}#{b}", "#{a}#{c}")).toEqual([
+      { kind: "same", text: "#{a}" },
+      { kind: "del", text: "#{b}" },
+      { kind: "add", text: "#{c}" },
+    ]);
+  });
+  it("不完全な参照が混じっても、つなぐと元の文に戻る", () => {
+    for (const [a, b] of [
+      ["#{ と #{x", "#{} と #{y}"],
+      ["a#{b", "a#{b}"],
+      ["##{a} と #{b}", "##{c} と #{b}"],
+    ] as const) {
+      const parts = textDiff(a, b);
+      const join = (skip: string) =>
+        parts
+          .filter((p) => p.kind !== skip)
+          .map((p) => p.text)
+          .join("");
+      expect(join("add")).toBe(a);
+      expect(join("del")).toBe(b);
+    }
+  });
 });
 
 describe("lineDiff", () => {

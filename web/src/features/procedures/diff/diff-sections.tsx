@@ -170,13 +170,26 @@ function VariableDefault({ d }: { d: VariableDiff }) {
   const { before, after } = d;
   if (d.status !== "mod" || !before || !after) return <DefaultValue v={after ?? before} />;
   if (before.secret !== after.secret) {
+    // 秘密にすると既定値は消える（D-26）。消えた値も見せる（前の版に秘密でない値として載っていたもの）
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="text-muted-foreground">秘密：</span>
-        <BeforeAfter
-          before={before.secret ? "あり" : "なし"}
-          after={after.secret ? "あり" : "なし"}
-        />
+      <span className="inline-flex flex-col items-start gap-1">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-muted-foreground">秘密：</span>
+          <BeforeAfter
+            before={before.secret ? "あり" : "なし"}
+            after={after.secret ? "あり" : "なし"}
+          />
+        </span>
+        {before.default !== after.default && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-muted-foreground">既定値：</span>
+            <BeforeAfter
+              className="font-mono text-[13px]"
+              before={before.default ?? "なし"}
+              after={after.default ?? "なし"}
+            />
+          </span>
+        )}
       </span>
     );
   }
