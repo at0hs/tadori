@@ -85,6 +85,8 @@ test("F-11 AC：S-05 から変更点を開き、追加・削除・変更・移�
   await expect(steps.getByText("追加", { exact: true })).toBeVisible();
   await expect(steps.getByText("変更", { exact: true })).toBeVisible();
   await expect(steps.getByText("3 ステップ（v1 は 3）")).toBeVisible();
+  // 足した文字は、読み上げでも分かる
+  await expect(steps.locator("ins", { hasText: "設定を" }).locator(".sr-only")).toHaveText("追加：");
 });
 
 test("F-11 AC：前に足して番号がずれただけのステップは変更なしにまとまる", async ({ page }) => {
@@ -103,6 +105,8 @@ test("F-11 AC：前に足して番号がずれただけのステップは変更�
   // 押すとその場所だけ開く
   await run.click();
   await expect(steps.getByText("連絡する")).toBeVisible();
+  // 押したボタンは消えるので、最初に現れたステップにフォーカスを移す
+  await expect(steps.locator(`li[id="diff-step-${a.id}"]`)).toBeFocused();
 });
 
 test("F-11 AC：下書きが最新版と同じなら、変更がないと出る", async ({ page }) => {
@@ -126,6 +130,7 @@ test("変数を秘密に変えると、既定値が消えたことも出る", as
   await expect(vars.getByText("秘密：")).toBeVisible();
   await expect(vars.getByText("既定値：")).toBeVisible();
   await expect(vars.locator("del", { hasText: "abcd" })).toBeVisible();
+  await expect(vars.locator("del", { hasText: "abcd" }).locator(".sr-only")).toHaveText("削除：");
 });
 
 test("S-17 から公開すると S-05 に戻り、版が上がる", async ({ page }) => {

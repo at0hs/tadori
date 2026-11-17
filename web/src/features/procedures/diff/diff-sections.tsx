@@ -13,7 +13,7 @@ import {
   Undo2,
   Variable,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { isChanged, type ProcedureDiff, type StepDiff, type VariableDiff } from "./compute.ts";
@@ -302,8 +302,10 @@ function DiffStepItem({ s, rollback }: { s: StepDiff; rollback?: boolean }) {
   return (
     <li
       id={`diff-step-${s.id}`}
+      // 「変更のないステップを表示」で開いたとき、ここにフォーカスを移す（DiffStepList）
+      tabIndex={-1}
       className={cn(
-        "-ml-5 flex scroll-mt-4 gap-4 border-b border-l-4 py-5 pl-4 last:border-b-0",
+        "-ml-5 flex scroll-mt-4 outline-none focus-visible:ring-2 focus-visible:ring-ring gap-4 border-b border-l-4 py-5 pl-4 last:border-b-0",
         barClass(s),
         s.status === "add" && "bg-success/5",
         del && "bg-destructive/5",
@@ -377,6 +379,13 @@ const unchanged = (s: StepDiff) => s.status === "same" && !s.moved;
 /** ステップの並び。変更のないステップが続くところは1行にまとめ、押すとその場所だけ開く。 */
 function DiffStepList({ steps, rollback }: { steps: StepDiff[]; rollback?: boolean }) {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  // 押したボタンは消えるので、開いた並びの最初のステップにフォーカスを移す
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusId === null) return;
+    document.getElementById(`diff-step-${focusId}`)?.focus();
+    setFocusId(null);
+  }, [focusId]);
   const out: React.ReactNode[] = [];
   let run: StepDiff[] = [];
   const flush = () => {
@@ -393,7 +402,10 @@ function DiffStepList({ steps, rollback }: { steps: StepDiff[]; rollback?: boole
         >
           <button
             type="button"
-            onClick={() => setOpen((o) => new Set(o).add(key))}
+            onClick={() => {
+              setOpen((o) => new Set(o).add(key));
+              setFocusId(key);
+            }}
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ChevronsUpDown className="size-4" aria-hidden />

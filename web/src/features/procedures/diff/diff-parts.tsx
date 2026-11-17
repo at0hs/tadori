@@ -9,6 +9,10 @@ export const DEL_CLASS =
   "rounded-sm bg-destructive/15 px-px text-foreground line-through decoration-destructive/70";
 export const INS_CLASS = "rounded-sm bg-success/20 px-px text-foreground no-underline";
 
+// 読み上げソフトの多くは <del>・<ins> を読み分けないので、言葉を添える
+const SrDel = () => <span className="sr-only">削除：</span>;
+const SrIns = () => <span className="sr-only">追加：</span>;
+
 /** 1つの文の中に、消えた文字（赤い地に取り消し線）と足した文字（緑の地）を並べる。 */
 export function InlineDiff({ parts, strong }: { parts: TextPart[]; strong?: boolean }) {
   return (
@@ -18,12 +22,14 @@ export function InlineDiff({ parts, strong }: { parts: TextPart[]; strong?: bool
         if (p.kind === "del")
           return (
             <del key={key} className={cn(DEL_CLASS, strong && "bg-destructive/25")}>
+              <SrDel />
               <VarText text={p.text} />
             </del>
           );
         if (p.kind === "add")
           return (
             <ins key={key} className={cn(INS_CLASS, strong && "bg-success/30")}>
+              <SrIns />
               <VarText text={p.text} />
             </ins>
           );
@@ -135,9 +141,15 @@ export function BeforeAfter({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <del className={DEL_CLASS}>{before}</del>
+      <del className={DEL_CLASS}>
+        <SrDel />
+        {before}
+      </del>
       <ArrowRight className="size-3.5 text-muted-foreground" aria-label="から" />
-      <ins className={INS_CLASS}>{after}</ins>
+      <ins className={INS_CLASS}>
+        <SrIns />
+        {after}
+      </ins>
     </span>
   );
 }
