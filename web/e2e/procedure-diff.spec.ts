@@ -85,6 +85,10 @@ test("F-11 AC：S-05 から変更点を開き、追加・削除・変更・移�
   await expect(steps.getByText("追加", { exact: true })).toBeVisible();
   await expect(steps.getByText("変更", { exact: true })).toBeVisible();
   await expect(steps.getByText("3 ステップ（v1 は 3）")).toBeVisible();
+  // 足した文字は、読み上げでも分かる
+  await expect(steps.locator("ins", { hasText: "設定を" }).locator(".sr-only")).toHaveText(
+    "追加：",
+  );
 });
 
 test("F-11 AC：前に足して番号がずれただけのステップは変更なしにまとまる", async ({ page }) => {
@@ -103,6 +107,8 @@ test("F-11 AC：前に足して番号がずれただけのステップは変更�
   // 押すとその場所だけ開く
   await run.click();
   await expect(steps.getByText("連絡する")).toBeVisible();
+  // 押したボタンは消えるので、最初に現れたステップにフォーカスを移す
+  await expect(steps.locator(`li[id="diff-step-${a.id}"]`)).toBeFocused();
 });
 
 test("F-11 AC：下書きが最新版と同じなら、変更がないと出る", async ({ page }) => {
@@ -111,6 +117,22 @@ test("F-11 AC：下書きが最新版と同じなら、変更がないと出る"
   await page.goto(`/procedures/${id}/draft/diff`);
   await expect(page.getByText("変更はありません")).toBeVisible();
   await expect(page.getByText("保存した下書きは、公開済みの v1 と同じ内容です。")).toBeVisible();
+});
+
+test("変数を秘密に変えると、既定値が消えたことも出る", async ({ page }) => {
+  const a = step("#{token} を確かめる");
+  const v = { name: "token", description: "", default: "abcd", secret: false };
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 9", [a], { variables: [v] }),
+    content("差分の確認 9", [a], { variables: [{ ...v, default: null, secret: true }] }),
+  );
+  await page.goto(`/procedures/${id}/draft/diff`);
+  const vars = page.getByRole("region", { name: "変数", exact: true });
+  await expect(vars.getByText("秘密：")).toBeVisible();
+  await expect(vars.getByText("既定値：")).toBeVisible();
+  await expect(vars.locator("del", { hasText: "abcd" })).toBeVisible();
+  await expect(vars.locator("del", { hasText: "abcd" }).locator(".sr-only")).toHaveText("削除：");
 });
 
 test("S-17 から公開すると S-05 に戻り、版が上がる", async ({ page }) => {
@@ -164,6 +186,87 @@ test("S-17 を開いた後に下書きが保存し直されたら、公開せず
   await page.getByRole("button", { name: "読み込み直す" }).click();
   await expect(page.getByText("あとから足した")).toBeVisible();
   await expect(page.getByRole("button", { name: "公開する" })).toBeEnabled();
+});
+
+test("読み込み直しに失敗しても、見出しと前の内容を残してエラーを出す", async ({ page }) => {
+  const a = step("確かめる");
+  const draft = content("差分の確認 10", [{ ...a, title: "よく確かめる" }]);
+  const { id, revision } = await publishedWithDraft(page, content("差分の確認 10", [a]), draft);
+  await page.goto(`/procedures/${id}/draft/diff`);
+  const steps = page.getByRole("region", { name: "手順", exact: true });
+  await expect(steps).toBeVisible();
+  const resaved = await page.request.put(`/api/procedures/${id}/draft`, {
+    headers,
+    data: { content: { ...draft, summary: "あとから足した" }, lock: { revision } },
+  });
+  expect(resaved.ok()).toBe(true);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel("変更理由").fill("古い内容で公開しようとした");
+  await dialog.getByRole("button", { name: "公開する" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "公開できませんでした" })).toBeVisible();
+
+  // 手順書の取り直しが通信の失敗になる
+  await page.route(`**/api/procedures/${id}`, (route) => route.abort());
+  await page.getByRole("button", { name: "読み込み直す" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "エラーが発生しました" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "下書きの変更点" })).toBeVisible();
+  await expect(steps).toBeVisible();
+
+  // もう一度読み込み直して通れば、エラーは消えて新しい下書きと比べ直す
+  await page.unroute(`**/api/procedures/${id}`);
+  await page.getByRole("button", { name: "読み込み直す" }).click();
+  await expect(page.getByText("あとから足した")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "エラーが発生しました" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "公開する" })).toBeEnabled();
+});
+
+test("競合の後にアーカイブされていたら、読み込み直すと下書きがないと出し、帯を残さない", async ({
+  page,
+}) => {
+  const a = step("確かめる");
+  const draft = content("差分の確認 14", [{ ...a, title: "よく確かめる" }]);
+  const { id, revision } = await publishedWithDraft(page, content("差分の確認 14", [a]), draft);
+  await page.goto(`/procedures/${id}/draft/diff`);
+  await expect(page.getByRole("region", { name: "手順", exact: true })).toBeVisible();
+  const resaved = await page.request.put(`/api/procedures/${id}/draft`, {
+    headers,
+    data: { content: { ...draft, summary: "あとから足した" }, lock: { revision } },
+  });
+  expect(resaved.ok()).toBe(true);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel("変更理由").fill("古い内容で公開しようとした");
+  await dialog.getByRole("button", { name: "公開する" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "公開できませんでした" })).toBeVisible();
+
+  // その後にアーカイブされた（下書きも消える）
+  const archived = await page.request.post(`/api/procedures/${id}/archive`, { headers });
+  expect(archived.ok()).toBe(true);
+  await page.getByRole("button", { name: "読み込み直す" }).click();
+  await expect(page.getByText("下書きはありません")).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("開いた後に下書きが破棄されていたら、破棄か公開かを見分けずに伝える", async ({ page }) => {
+  const a = step("確かめる");
+  const { id, revision } = await publishedWithDraft(
+    page,
+    content("差分の確認 11", [a]),
+    content("差分の確認 11", [{ ...a, title: "よく確かめる" }]),
+  );
+  await page.goto(`/procedures/${id}/draft/diff`);
+  await expect(page.getByRole("region", { name: "手順", exact: true })).toBeVisible();
+  const discarded = await page.request.delete(`/api/procedures/${id}/draft?revision=${revision}`, {
+    headers,
+  });
+  expect(discarded.ok()).toBe(true);
+
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel("変更理由").fill("破棄された下書きを公開しようとした");
+  await dialog.getByRole("button", { name: "公開する" }).click();
+  await expect(page.getByText("下書きが破棄されたか、公開されました。")).toBeVisible();
 });
 
 test("S-17 を開いている間にほかで公開されても、フォーカスで最新版だけを取り直して比べ直さない", async ({
@@ -231,4 +334,45 @@ test("S-09 の公開のダイアログに v1 からの変更の要約が出る",
     "target",
     "_blank",
   );
+});
+
+test("S-09 で最新版を読めないうちは、要約の代わりに状態を出す", async ({ page }) => {
+  const a = step("確かめる");
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 12", [a]),
+    content("差分の確認 12", [a, step("片付ける")]),
+  );
+  // 手順書（最新版）の返事だけを止める。編集画面は下書きの API で開く
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/procedures/${id}`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto(`/procedures/${id}/edit`);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("変更点を計算しています…")).toBeVisible();
+  // 返事が届くと、開いたままのダイアログで要約に変わる
+  release();
+  await expect(dialog.getByText("手順：追加 1")).toBeVisible();
+  await expect(dialog.getByText("変更点を計算しています…")).toHaveCount(0);
+});
+
+test("S-09 で最新版を読めなかったら、要約を出せなかったと伝え、公開はできる", async ({ page }) => {
+  const a = step("確かめる");
+  const { id } = await publishedWithDraft(
+    page,
+    content("差分の確認 13", [a]),
+    content("差分の確認 13", [a, step("片付ける")]),
+  );
+  await page.route(`**/api/procedures/${id}`, (route) => route.abort());
+  await page.goto(`/procedures/${id}/edit`);
+  await page.getByRole("button", { name: "公開する" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("変更点の要約を出せませんでした")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "公開する" })).toBeEnabled();
 });

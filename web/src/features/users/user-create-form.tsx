@@ -114,6 +114,7 @@ export function UserCreateForm() {
               <RoleRadio
                 name={field.name}
                 labelledBy="role-label"
+                focusRef={field.ref}
                 value={field.value}
                 onChange={field.onChange}
                 invalid={!!errors.role}
